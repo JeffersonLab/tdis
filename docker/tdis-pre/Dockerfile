@@ -42,9 +42,9 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 
-RUN python3 -m pip install --user --upgrade --force-reinstall  click &&\
-    python3 -m pip install --user --upgrade --force-reinstall  appdirs &&\
-    python3 -m pip install --user --upgrade --force-reinstall  edpm &&\
+RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages  click &&\
+    python3 -m pip install --user --upgrade --force-reinstall --break-system-packages  appdirs &&\
+    python3 -m pip install --user --upgrade --force-reinstall --break-system-packages  edpm &&\
     edpm --top-dir=/container/app &&\
     edpm
 
@@ -69,11 +69,15 @@ RUN edpm config global cxx_standard=17 &&\
     echo "*** ROOT INSTALLATION DONE ***"
 
 
-# aa
-RUN python3 -m pip install --user --upgrade --force-reinstall edpm &&\
-    edpm config jana2 branch="v2.2.0" &&\
-    edpm config jana2 cmake_flags="-DUSE_PODIO=Off -DUSE_ROOT=On" &&\
-    edpm install jana4tdis --deps-only
+RUN edpm config podio branch="v01-00-01" &&\
+    edpm install podio
+
+RUN edpm config acts branch="v35.2.0" &&\
+    edpm install acts
+
+    # edpm config jana2 branch="v2.2.0" &&\
+    # edpm config jana2 cmake_flags="-DUSE_PODIO=Off -DUSE_ROOT=On" &&\
+    # edpm install tdis --deps-only
 
     # jupyterab
 RUN python3 -m pip install jupyterlab
