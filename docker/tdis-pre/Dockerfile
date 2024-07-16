@@ -62,22 +62,24 @@ RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-pac
 #      sudo rm -rf /var/lib/apt/lists/*
 # (!) Build with C++20
 # eicrecon stack
-RUN edpm config global cxx_standard=17 &&\
+RUN edpm config global cxx_standard=20 &&\
     #edpm config root branch="v6-28-02" &&\
     edpm set root /opt/root &&\
     #edpm install -j${BUILD_THREADS} root &&\
     echo "*** ROOT INSTALLATION DONE ***"
 
 
+RUN edpm config jana2 branch="v2.2.0" &&\
+    edpm config jana2 cmake_flags="-DUSE_PODIO=Off -DUSE_ROOT=On" &&\
+    edpm install jana2
+
+RUN edpm config acts branch="v35.2.0" &&\
+    edpm config acts cmake_flags='-DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF' &&\
+    edpm install acts
+
 RUN edpm config podio branch="v01-00-01" &&\
     edpm install podio
 
-RUN edpm config acts branch="v35.2.0" &&\
-    edpm install acts
-
-    # edpm config jana2 branch="v2.2.0" &&\
-    # edpm config jana2 cmake_flags="-DUSE_PODIO=Off -DUSE_ROOT=On" &&\
-    # edpm install tdis --deps-only
 
     # jupyterab
 RUN python3 -m pip install jupyterlab
