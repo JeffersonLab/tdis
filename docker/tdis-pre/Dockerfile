@@ -42,6 +42,9 @@ RUN apt-get update &&\
                        libgsl-dev qtwebengine5-dev nlohmann-json3-dev &&\
     rm -rf /var/lib/apt/lists/*
 
+# Set clang as default
+RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60
+
 
 RUN useradd -m -G sudo tdisuser
 RUN echo "tdisuser ALL=(ALL) NOPASSWD:ALL">>/etc/sudoers
@@ -98,7 +101,7 @@ RUN edpm config podio branch=${VERSION_PODIO} &&\
     edpm install podio
 
 RUN edpm config jana2 branch=${VERSION_JANA2} &&\
-    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On" &&\
+    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" &&\
     edpm install jana2
 
 RUN ls && pwd
@@ -107,6 +110,7 @@ RUN ls && pwd
 #RUN python3 -m pip install jupyterlab
 
 USER root
+
 
 # Create the entrypoint script
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
@@ -128,3 +132,9 @@ ENTRYPOINT ["/entrypoint.sh"]
 USER root
 
 RUN echo "done"
+
+
+RUN apt-get update &&\
+    apt-get install -y clang-tools-18 clang-tidy &&\
+    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps &&\
+    rm -rf /var/lib/apt/lists/*

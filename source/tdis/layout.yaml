@@ -1,0 +1,71 @@
+---
+# A more complete example is provided by podio under tests/datalayout.yaml
+
+schema_version: 1
+options :
+  # should getters / setters be prefixed with get / set?
+  getSyntax: False
+  # should POD members be exposed with getters/setters in classes that have them as members?
+  exposePODMembers: True
+  includeSubfolder: True
+
+datatypes :
+  EventInfo:
+    Description : "Event info"
+    Author : "N. Brei"
+    Members :
+      - int EventNumber       // event number
+      - int TimesliceNumber   // timeslice number
+      - int RunNumber         // run number
+
+  TimesliceInfo:
+    Description : "Timeslice info"
+    Author : "N. Brei"
+    Members :
+      - int TimesliceNumber // timeslice number
+      - int RunNumber // run number
+
+  DigitizedMtpcMcTrack:
+    Description: "TDIS MTPC Digitized track"
+    Author: "Dmitry Romanov"
+    Members:
+      - double momentum    // (GeV/c)
+      - double theta       // (degrees)
+      - double phi         // (degrees)
+      - double vertexZ     // (m)
+    OneToManyRelations:
+      - DigitizedMtpcMcHit hits // hits contained in the cluster
+  
+
+  DigitizedMtpcMcHit:
+    Description: "TDIS MTPC Digitized track"
+    Author: "Dmitry Romanov"
+    Members:
+      - double time    // - Time of arrival at Pad (ns)
+      - double adc     // - Amplitude (ADC bin of sampa)
+      - int ring       // - Ring (id of rin, 0 is inner most).
+      - int pad        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+      - int plane      // - Plane(id of z plane from 0 upstream  to 9 downstream)
+      - double zToGem  // - ZtoGEM (m)
+
+
+  ExampleHit :
+    Description : "Example Hit"
+    Author : "B. Hegner"
+    Members:
+      - unsigned long long cellID      // cellID
+      - double x      // x-coordinate
+      - double y      // y-coordinate
+      - double z      // z-coordinate
+      - double energy // measured energy deposit
+      - uint64_t time   // ticks since start of timeframe
+
+  ExampleCluster :
+    Description : "Cluster"
+    Author : "B. Hegner"
+    Members:
+      - double energy // cluster energy
+    OneToManyRelations:
+      - ExampleHit Hits // hits contained in the cluster
+      - ExampleCluster Clusters // sub clusters used to create this cluster
+

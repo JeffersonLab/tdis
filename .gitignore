@@ -3,3 +3,7 @@
 /cpm_modules
 .DS_Store
 .idea/
+
+cmake-build-debug-docker-tdis/
+
+source/tdis/podio_model/
