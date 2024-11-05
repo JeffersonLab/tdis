@@ -1,8 +1,3 @@
-[![Actions Status](https://github.com/JeffersonLab/tdis/workflows/Ubuntu/badge.svg)](https://github.com/JeffersonLab/tdis/actions)
-[![Actions Status](https://github.com/JeffersonLab/tdis/workflows/Style/badge.svg)](https://github.com/JeffersonLab/tdis/actions)
-[![Actions Status](https://github.com/JeffersonLab/tdis/workflows/Install/badge.svg)](https://github.com/JeffersonLab/tdis/actions)
-[![codecov](https://codecov.io/gh/JeffersonLab/tdis/branch/main/graph/badge.svg)](https://codecov.io/gh/JeffersonLab/tdis)
-
 ["Use Docker" documentation to setup environment and run](use_docker.md)
 
 To run
