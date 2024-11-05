@@ -12,7 +12,7 @@
 #include <Acts/MagneticField/MagneticFieldContext.hpp>
 #include <Acts/MagneticField/MagneticFieldProvider.hpp>
 #include <Acts/Utilities/Result.hpp>
-#include <DD4hep/Detector.h>
+
 #include <gsl/pointers>
 #include <memory>
 #include <variant>
@@ -34,7 +34,7 @@ namespace eicrecon::BField {
    */
   class DD4hepBField final : public Acts::MagneticFieldProvider {
   public:
-      gsl::not_null<const dd4hep::Detector*> m_det;
+
 
   public:
     struct Cache {
@@ -43,18 +43,17 @@ namespace eicrecon::BField {
 
     Acts::MagneticFieldProvider::Cache makeCache(const Acts::MagneticFieldContext& mctx) const override
     {
-#if Acts_VERSION_MAJOR >= 32
+
       return Acts::MagneticFieldProvider::Cache(std::in_place_type<Cache>, mctx);
-#else
-      return Acts::MagneticFieldProvider::Cache::make<Cache>(mctx);
-#endif
+
     }
 
     /** construct constant magnetic field from field vector.
     *
-    * @param [in] DD4hep detector instance
     */
-    explicit DD4hepBField(gsl::not_null<const dd4hep::Detector*> det) : m_det(det) {}
+    explicit DD4hepBField() {
+        
+    }
 
     /**  retrieve magnetic field value.
      *

@@ -41,15 +41,25 @@ add_executable(tdis
         PadGeometryHelper.hpp
         io/DigitizedDataEventSource.hpp
         io/PodioWriteProcessor.hpp
+        tracking/ActsGeometryProvider.cc
+        tracking/ActsGeometryProvider.h
+        tracking/ActsGeometryService.cc
+        tracking/ActsGeometryService.h
+        tracking/ReconstructedHitFactory.h
+        # tracking/DD4hepBField.h
+        # /tracking/DD4hepBField.cc
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------
 find_package(JANA REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
+find_package(Boost REQUIRED)
 
-target_include_directories(tdis PUBLIC ../../plugins/tdis)
-target_link_libraries(tdis ${JANA_LIB} podio::podio podio::podioRootIO podio_model_lib podio_model_dict spdlog::spdlog fmt::fmt CLI11::CLI11)
+find_package(Acts REQUIRED COMPONENTS Core PluginTGeo PluginJson)
+
+target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
+target_link_libraries(tdis ${JANA_LIB} podio::podio podio::podioRootIO podio_model_lib podio_model_dict spdlog::spdlog fmt::fmt CLI11::CLI11 Boost::boost ActsCore ActsPluginTGeo ActsPluginJson)
 
 set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 target_include_directories(tdis PRIVATE "podio_model")

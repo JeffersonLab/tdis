@@ -3,101 +3,83 @@
 //
 //
 
-#include "ACTSGeo_service.h"
+#include "ActsGeometryService.h"
 
-#include <Acts/Visualization/ViewConfig.hpp>
 #include <JANA/JException.h>
+#include <TGeoManager.h>
+#include <extensions/spdlog/SpdlogToActs.h>
+#include <fmt/ostream.h>
+
+#include <Acts/Plugins/Json/JsonMaterialDecorator.hpp>
+#include <Acts/Plugins/Json/MaterialMapJsonConverter.hpp>
+#include <Acts/Visualization/ViewConfig.hpp>
 #include <array>
 #include <exception>
 #include <string>
 
 #include "ActsGeometryProvider.h"
-
 #include "services/LogService.hpp"
 
-// Virtual destructor implementation to pin vtable and typeinfo to this
-// translation unit
-ACTSGeo_service::~ACTSGeo_service() {};
+// Formatter for Eigen matrices
+#if FMT_VERSION >= 90000
+#    include <Eigen/Core>
 
-//----------------------------------------------------------------
-// detector
-//
-/// Return pointer to the dd4hep::Detector object.
-/// Call Initialize if needed.
-//----------------------------------------------------------------
-std::shared_ptr<const ActsGeometryProvider> ACTSGeo_service::actsGeoProvider() {
+namespace Acts {
+    class JsonMaterialDecorator;
+}
+template <typename T>
+struct fmt::formatter<
+    T,
+    std::enable_if_t<
+        std::is_base_of_v<Eigen::MatrixBase<T>, T>,
+        char
+    >
+> : fmt::ostream_formatter {};
+#endif // FMT_VERSION >= 90000
 
-    try{
-        std::call_once(m_init_flag, [this](){
-            // Assemble everything on the first call
 
-            // Get material map from user parameter
-            std::string geometry_file = "calibrations/materials-map.cbor";
-            m_app->SetDefaultParameter("acts:MaterialMap", geometry_file, "JSON/CBOR material map file path");
+void ActsGeometryService::Init() {
 
-            // Get material map from user parameter
-            std::string material_map_file = "calibrations/materials-map.cbor";
-            m_app->SetDefaultParameter("acts:MaterialMap", material_map_file, "JSON/CBOR material map file path");
+    m_log = m_service_log->logger("acts");
+    m_init_log = m_service_log->logger("acts_init");
 
-            // Reading the geometry may take a long time and if the JANA ticker is enabled, it will keep printing
-            // while no other output is coming which makes it look like something is wrong. Disable the ticker
-            // while parsing and loading the geometry
-            auto tickerEnabled = m_app->IsTickerEnabled();
-            m_app->SetTicker(false);
+    m_init_log->debug("ActsGeometryService is initializing...");
 
-            // Create default m_acts_provider
-            m_acts_provider = std::make_shared<ActsGeometryProvider>();
-
-            // Set ActsGeometryProvider parameters
-            bool objWriteIt = m_acts_provider->getObjWriteIt();
-            bool plyWriteIt = m_acts_provider->getPlyWriteIt();
-            m_app->SetDefaultParameter("acts:WriteObj", objWriteIt, "Write tracking geometry as obj files");
-            m_app->SetDefaultParameter("acts:WritePly", plyWriteIt, "Write tracking geometry as ply files");
-            m_acts_provider->setObjWriteIt(objWriteIt);
-            m_acts_provider->setPlyWriteIt(plyWriteIt);
-
-            std::string outputTag = m_acts_provider->getOutputTag();
-            std::string outputDir = m_acts_provider->getOutputDir();
-            m_app->SetDefaultParameter("acts:OutputTag", outputTag, "Obj and ply output file tag");
-            m_app->SetDefaultParameter("acts:OutputDir", outputDir, "Obj and ply output file dir");
-            m_acts_provider->setOutputTag(outputTag);
-            m_acts_provider->setOutputDir(outputDir);
-
-            std::array<int,3> containerView = m_acts_provider->getContainerView().color.rgb;
-            std::array<int,3> volumeView = m_acts_provider->getVolumeView().color.rgb;
-            std::array<int,3> sensitiveView = m_acts_provider->getSensitiveView().color.rgb;
-            std::array<int,3> passiveView = m_acts_provider->getPassiveView().color.rgb;
-            std::array<int,3> gridView = m_acts_provider->getGridView().color.rgb;
-            m_app->SetDefaultParameter("acts:ContainerView", containerView, "RGB for container views");
-            m_app->SetDefaultParameter("acts:VolumeView", volumeView, "RGB for volume views");
-            m_app->SetDefaultParameter("acts:SensitiveView", sensitiveView, "RGB for sensitive views");
-            m_app->SetDefaultParameter("acts:PassiveView", passiveView, "RGB for passive views");
-            m_app->SetDefaultParameter("acts:GridView", gridView, "RGB for grid views");
-            m_acts_provider->setContainerView(containerView);
-            m_acts_provider->setVolumeView(volumeView);
-            m_acts_provider->setSensitiveView(sensitiveView);
-            m_acts_provider->setPassiveView(passiveView);
-            m_acts_provider->setGridView(gridView);
-
-            // Initialize m_acts_provider
-            m_acts_provider->initialize(geometry_file, material_map_file, m_log, m_log);
-
-            // Enable ticker back
-            m_app->SetTicker(tickerEnabled);
-        });
-    }
-    catch (std::exception &ex) {
-        throw JException(ex.what());
+    m_init_log->debug("Set TGeoManager and acts_init_log_level log levels");
+    // Turn off TGeo printouts if appropriate for the msg level
+    if (m_log->level() >= (int) spdlog::level::info) {
+        TGeoManager::SetVerboseLevel(0);
     }
 
-    return m_acts_provider;
+    // Reading the geometry may take a long time and if the JANA ticker is enabled, it will keep printing
+    // while no other output is coming which makes it look like something is wrong. Disable the ticker
+    // while parsing and loading the geometry
+    auto was_ticker_enabled = m_app->IsTickerEnabled();
+    m_app->SetTicker(false);
+
+
+    // Set ACTS logging level
+    auto acts_init_log_level = eicrecon::SpdlogToActsLevel(m_init_log->level());
+
+    // Load ACTS materials maps
+    std::shared_ptr<const Acts::IMaterialDecorator> materialDeco{nullptr};
+    if (!m_material_map_file().empty()) {
+        m_init_log->info("loading materials map from file: '{}'", m_material_map_file());
+        // Set up the converter first
+        Acts::MaterialMapJsonConverter::Config jsonGeoConvConfig;
+        // Set up the json-based decorator
+        materialDeco = std::make_shared<const Acts::JsonMaterialDecorator>(jsonGeoConvConfig, m_material_map_file(), acts_init_log_level);
+    }
+
+    // Convert DD4hep geometry to ACTS
+    m_init_log->info("Converting TGeo geometry to ACTS...");
+    auto logger = eicrecon::getSpdlogLogger("CONV", m_log);
+
+
+
+    // Set ticker back
+    m_app->SetTicker(was_ticker_enabled);
+
+    m_init_log->info("ActsGeometryService initialization complete");
 }
 
-
-
-void ACTSGeo_service::acquire_services(JServiceLocator * srv_locator) {
-
-    auto log_service = srv_locator->get<tdis::services::LogService>();
-    m_log = log_service->logger("acts");
-
-}

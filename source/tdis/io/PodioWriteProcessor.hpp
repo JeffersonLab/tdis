@@ -1,14 +1,45 @@
+// Created by Dmitry Romanov, somewhere in 2024
+// Subject to the terms in the LICENSE file found in the top-level directory.
 
 #pragma once
+
+/** This class is responsible for writing out PODIO Collections to the output podio file
+ *
+ * (!) In the current version of PODIO, the customization of what is written from what is added to frame is limited
+ * It is suggested to write everything that is created, to avoid segfaults and side effects
+ *
+ * (!!!) If you create PODIO data, add collections names below to output_collections
+ * This means that if you create and fill some PODIO collection, you ensure it is written by this processor.
+ *
+ * Configuration Parameters
+ *    - podio:output_file (std::string):
+ *        The name of the output ROOT file. Default is "podio_output.root".
+ *        Setting this parameter to "1" uses the default file name.
+ *
+ *    - podio:print_collections (std::vector<std::string>):
+ *        A comma-separated list of collection names to print to the console for debugging purposes.
+ *
+ *    - podio:output_collections (std::vector<std::string>): '
+ *            A comma-separated list of collection names to write out.
+ *            If not set, all collections will be written.
+ *            It's not recommended to specify this flag but one can use it for some debug purposes
+ *
+ * Important Considerations:
+ *
+ *  - Consistency Requirement: All collections intended to be written must be present in the first event.
+ *    This is due to a constraint in podio::ROOTWriter, which requires all branches (collections)
+ *    to be defined when the first event is written.
+
+ *  - Exception Handling: Missing Collections: If a collection is missing or fails to be retrieved,
+ *    the processor catches the exception and marks the collection as failed.
+ *    Skipping Failed Collections: Failed collections are skipped in subsequent events to prevent
+ *    repeated exceptions and potential crashes.
+ */
 
 #include <JANA/JEvent.h>
 #include <JANA/JEventProcessor.h>
 #include <podio/podioVersion.h>
-#if podio_VERSION >= PODIO_VERSION(0, 99, 0)
 #include <podio/ROOTWriter.h>
-#else
-#include <podio/ROOTFrameWriter.h>
-#endif
 #include <spdlog/logger.h>
 #include <memory>
 #include <mutex>

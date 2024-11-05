@@ -13,10 +13,10 @@ ARG BUILD_THREADS=8
 
 # Software versions
 
-ARG VERSION_CERN_ROOT=v6-32-02
-ARG VERSION_ACTS=v36.0.0
-ARG VERSION_PODIO=v01-00-01
-ARG VERSION_JANA2=v2.3.1
+ARG VERSION_CERN_ROOT=v6-32-06
+ARG VERSION_ACTS=v37.2.0
+ARG VERSION_PODIO=v01-01
+ARG VERSION_JANA2=v2.3.2
 
 
 ENV EIC_ROOT /eic
@@ -34,7 +34,7 @@ RUN apt-get update &&\
                        libvtk9-dev libmsgsl-dev libftgl-dev libxml2-dev libldap2-dev  \
                        libgsl0-dev libfftw3-dev libmysqlclient-dev libavahi-compat-libdnssd-dev libssl-dev  \
                        libcfitsio-dev xlibmesa-glu-dev libkrb5-dev graphviz-dev libpcre3-dev libglew-dev  \
-                       libxmu-dev libexpat-dev libtbb-dev libboost-filesystem-dev \
+                       libxmu-dev libexpat-dev libtbb-dev libboost-filesystem-dev libboost-all-dev \
                        libspdlog-dev libxext-dev qtbase5-dev libqt5opengl5-dev libx11-dev libboost-test-dev  \
                        libocct-draw-dev libeigen3-dev libocct-data-exchange-dev libocct-foundation-dev  \
                        libfmt-dev libxft-dev libboost-program-options-dev libboost-dev libxpm-dev   \
