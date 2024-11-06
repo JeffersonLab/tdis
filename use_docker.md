@@ -31,7 +31,10 @@ docker pull eicdev/tdis-pre
 Running docker (minimal and probably useless):
 
 ```bash
-docker run -it --rm eicdev/tdis-pre
+docker run -it --rm eicdev/tdis-pre 
+
+# like run bash shell in docker
+docker run -it --rm eicdev/tdis-pre bash
 ```
 
 
