@@ -25,15 +25,25 @@ This is convenient to encode in a singe uint32_t ID. We assign 8 bits each to pl
 The encodePadID function packs these three values into a single uint32_t using bitwise shifts and OR operations.
 
 ```python
+import numpy as np
+
 def encode_pad_id(plane, ring, pad):
-    """Encode values into a single uint32_t: 8 bits for plane, 8 bits for ring, 16 bits for pad"""
-    return (plane << 24) | (ring << 16) | pad
+    """Encode plane, ring, pad into an uint32_t id.
+    Works with both scalar values and numpy arrays."""
+    plane = np.asarray(plane, dtype=np.uint32)
+    ring = np.asarray(ring, dtype=np.uint32)
+    pad = np.asarray(pad, dtype=np.uint32)
+    
+    pad_id = (plane << 24) | (ring << 16) | pad
+    return pad_id
 
 def decode_pad_id(pad_id):
-    """decodes pad_id into plane, ring, pad """
-    plane = (pad_id >> 24) & 0xFF  # Get the upper 8 bits
-    ring = (pad_id >> 16) & 0xFF   # Get the next 8 bits
-    pad = pad_id & 0xFFFF          # Get the lower 16 bits
+    """Decode pad_id into plane, ring, pad.
+    Works with both scalar values and numpy arrays."""
+    
+    pad_id = np.asarray(pad_id, dtype=np.uint32)
+    plane = (pad_id >> 24) & 0xFF  # Upper 8 bits
+    ring = (pad_id >> 16) & 0xFF   # Next 8 bits
+    pad = pad_id & 0xFFFF          # Lower 16 bits
     return plane, ring, pad
-
 ```
