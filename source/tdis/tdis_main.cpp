@@ -109,8 +109,8 @@ int main(int argc, char* argv[]) {
 
 
     JApplication app(parameterManager);
-    app.Add(new JEventSourceGeneratorT<tdis::readout::DigitizedDataEventSource>);
-    app.Add(new PodioWriteProcessor(&app));
+    app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
+    app.Add(new tdis::io::PodioWriteProcessor(&app));
     app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
     // app.Add(new JEventProcessorPodio);
     // app.Add(new JFactoryGeneratorT<ExampleClusterFactory>());

@@ -55,7 +55,7 @@
 #include "podio_model/EventInfoCollection.h"
 #include "services/LogService.hpp"
 
-namespace tdis::readout {
+namespace tdis::io {
 
     /** POD structure for readout hits **/
     struct DigitizedReadoutHit {
@@ -336,8 +336,8 @@ namespace tdis::readout {
         EventInfoCollection info;
         info.push_back(MutableEventInfo(0, 0, 0)); // event nr, timeslice nr, run nr
         event.InsertCollection<EventInfo>(std::move(info), "EventInfo");
-        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "McTracks");
-        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "McHits");
+        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTrack");
+        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHit");
         m_log->info("Event has been emitted at {}", m_event_line_index);
         return Result::Success;
     }
@@ -352,7 +352,7 @@ namespace tdis::readout {
 
 // The template specialization needs to be in the global namespace (or at least not inside the tdis namespace)
 template <>
-inline double JEventSourceGeneratorT<tdis::readout::DigitizedDataEventSource>::CheckOpenable(std::string resource_name) {
+inline double JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>::CheckOpenable(std::string resource_name) {
   // CheckOpenable() decides how confident we are that this EventSource can handle this resource.
   //    0.0        -> 'Cannot handle'
   //    (0.0, 1.0] -> 'Cean handle, with this confidence level'

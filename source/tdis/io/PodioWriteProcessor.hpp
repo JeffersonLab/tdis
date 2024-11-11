@@ -64,7 +64,7 @@
 
 #include "services/LogService.hpp"
 
-//namespace tdis::readout {
+namespace tdis::io {
 class PodioWriteProcessor : public JEventProcessor {
 
 public:
@@ -74,8 +74,8 @@ public:
         "EventInfo",
 
         // Truth record
-        "McTracks",
-        "McHits"
+        "DigitizedMtpcMcTrack",
+        "DigitizedMtpcMcHit"
     };
 
   PodioWriteProcessor(JApplication * app);
@@ -127,25 +127,36 @@ inline void PodioWriteProcessor::Init() {
         "be written (including ones from input file). Don't set this and use "
         "PODIO:OUTPUT_EXCLUDE_COLLECTIONS to write everything except a selection.");
 
-    m_output_collections = std::set<std::string>(output_collections.begin(), output_collections.end());
+    m_output_collections
+        = std::set<std::string>(output_collections.begin(), output_collections.end());
 
     m_app->SetDefaultParameter(
-            "podio:print_collections",
-            m_collections_to_print,
-            "Comma separated list of collection names to print to screen, e.g. for debugging."
-    );
+        "podio:print_collections", m_collections_to_print,
+        "Comma separated list of collection names to print to screen, e.g. for debugging.");
 
     m_writer = std::make_unique<podio::ROOTWriter>(m_output_file);
 }
 
-
-void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
+inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    m_log->info("PodioWriteProcessor::Process() All event collections:");
+    auto event_collections = event->GetAllCollectionNames();
+    for (const auto& coll_name : event_collections) {
+        try {
+            m_log->info("   {}", coll_name);
+        } catch (std::exception& e) {
+            // chomp
+        }
+    }
+
+
     // Trigger all collections once to fix the collection IDs
+    m_collections_to_write.clear();
     for (const auto& coll_name : m_output_collections) {
         try {
             [[maybe_unused]] const auto* coll_ptr = event->GetCollectionBase(coll_name);
+            m_collections_to_write.push_back(coll_name);
         } catch (std::exception& e) {
             // chomp
         }
@@ -243,11 +254,18 @@ void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
     }
     */
     m_writer->writeFrame(*frame, "events", m_collections_to_write);
+
+    auto [missing_names, all_names] = m_writer->checkConsistency(m_collections_to_write, "");
+    m_log->info("PODIO checkConsistency missing_names: {}", missing_names.size());
+    for (const auto& coll_name : missing_names) {
+        m_log->info("   {}", coll_name);
+
+    }
     m_is_first_event = false;
 }
 
-void PodioWriteProcessor::Finish() {
+inline void PodioWriteProcessor::Finish() {
     m_writer->finish();
 }
 
-//}
+}   // namespace tdis:io

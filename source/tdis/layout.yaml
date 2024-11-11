@@ -252,7 +252,7 @@ components:
       - std::array<double,16> transform   // row-wise 4x4 affine transform [R T; 0 1] with 3x3 rotation matrix R and translation column 3-vector T
 
 datatypes :
-  EventInfo:
+  tdis::EventInfo:
     Description : "Event info"
     Author : "N. Brei"
     Members :
@@ -260,14 +260,14 @@ datatypes :
       - int TimesliceNumber   // timeslice number
       - int RunNumber         // run number
 
-  TimesliceInfo:
+  tdis::TimesliceInfo:
     Description : "Timeslice info"
     Author : "N. Brei"
     Members :
       - int TimesliceNumber // timeslice number
       - int RunNumber // run number
 
-  DigitizedMtpcMcTrack:
+  tdis::DigitizedMtpcMcTrack:
     Description: "TDIS MTPC Digitized track"
     Author: "Dmitry Romanov"
     Members:

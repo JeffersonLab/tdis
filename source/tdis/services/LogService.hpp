@@ -111,7 +111,7 @@ namespace tdis::services {
                     // Set log level for this named logger allowing user to specify as config. parameter
                     // e.g. EcalEndcapPRecHits:LogLevel
                     std::string log_level_str = default_level ? LogLevelToString(default_level.value()) : m_log_level_str;
-                    m_application->SetDefaultParameter(name + ":LogLevel", log_level_str, "log_level for " + name + ": trace, debug, info, warn, error, critical, off");
+                    m_application->SetDefaultParameter(name + ":log_level", log_level_str, "log_level for " + name + ": trace, debug, info, warn, error, critical, off");
                     logger->set_level(ParseLogLevel(log_level_str));
                 }
                 return logger;
