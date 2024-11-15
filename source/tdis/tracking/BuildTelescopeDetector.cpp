@@ -90,9 +90,9 @@ ActsExamples::Telescope::buildDetector(const typename ActsExamples::Telescope::T
         std::unique_ptr<Acts::SurfaceArray> surArray(new Acts::SurfaceArray(surface));
         // Construct the layer
         if (surfaceType == TelescopeSurfaceType::Plane) {
-            layers[i] = Acts::PlaneLayer::create(trafo, pBounds, std::move(surArray), 1._mm);
+            layers[i] = Acts::PlaneLayer::create(trafo, pBounds, std::move(surArray), thickness);
         } else {
-            layers[i] = Acts::DiscLayer::create(trafo, rBounds, std::move(surArray), 1._mm);
+            layers[i] = Acts::DiscLayer::create(trafo, rBounds, std::move(surArray), thickness);
         }
         // Associate the layer to the surface
         auto mutableSurface = const_cast<Acts::Surface *>(surface.get());

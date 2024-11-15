@@ -16,6 +16,7 @@
 #include <Acts/Plugins/Json/MaterialMapJsonConverter.hpp>
 #include <Acts/Visualization/GeometryView3D.hpp>
 #include <Acts/Visualization/ObjVisualization3D.hpp>
+#include <Acts/Visualization/PlyVisualization3D.hpp>
 #include <Acts/Visualization/ViewConfig.hpp>
 #include <array>
 #include <exception>
@@ -357,7 +358,7 @@ void tdis::tracking::ActsGeometryService::Init() {
         // We just copy it, considering the disks are the same
         bounds[0] = r_min * Acts::UnitConstants::cm;
         bounds[1] = r_max * Acts::UnitConstants::cm;
-        thickness = dz * Acts::UnitConstants::cm * 0.1;
+        thickness = dz * Acts::UnitConstants::cm * 0.001;
 
         m_log->info(fmt::format("   Position: ({:.4f}, {:.4f}, {:>8.4f}) cm, rmin: {:.3f} cm, rmax: {:.3f} cm, dz: {:.4f} cm, Node: '{}', Volume: '{}'",
                             x, y, z, r_min, r_max, dz, node->GetName(), volume->GetName()));
@@ -366,14 +367,14 @@ void tdis::tracking::ActsGeometryService::Init() {
         stereos.push_back(0);
     }
 
-    Acts::ObjVisualization3D objVis;
+
 
     m_init_log->info("Building ACTS Geometry");
 
 
 
     /// Return the telescope detector
-    std::shared_ptr<const Acts::TrackingGeometry> gGeometry =
+    gGeometry =
         ActsExamples::Telescope::buildDetector(
             nominalContext, // gctx is the detector element dependent geometry context
             detectorStore,  // detectorStore is the store for the detector element
@@ -385,20 +386,32 @@ void tdis::tracking::ActsGeometryService::Init() {
             ActsExamples::Telescope::TelescopeSurfaceType::Disc, // surfaceType is the detector surface type
             Acts::BinningValue::binZ);
 
-    m_log->info("ACTS Detector Elements");
-    for(auto &element: detectorStore) {
-        Acts::GeometryView3D::drawSurface(objVis, element->surface(), m_geometry_context, element->transform(m_geometry_context));
+
+    // Visualize ACTS geometry
+    const Acts::TrackingVolume& tgVolume = *(gGeometry->highestTrackingVolume());
+
+    // OBJ visualization export
+    auto obj_file = m_obj_output_file();
+    if(!m_obj_output_file().empty()) {
+        m_log->info("ACTS exporting to OBJ: {}", m_obj_output_file());
+        Acts::ObjVisualization3D vis_helper;
+        DrawTrackingGeometry(vis_helper, tgVolume, m_geometry_context);
+        vis_helper.write(m_obj_output_file());
+    } else {
+        m_log->info("ACTS OBJ Export. Flag '{}' is empty. NOT exporting.", m_obj_output_file.m_name);
     }
 
-    if(!m_obj_output_file().empty()) {
-        m_log->info("ACTS Exporting geometry as view to: {}", m_obj_output_file());
-        objVis.write(m_obj_output_file());
+    // PLY visualization export
+    if(!m_ply_output_file().empty()) {
+        m_log->info("ACTS exporting to PLY: {}", m_ply_output_file());
+        Acts::PlyVisualization3D vis_helper;
+        DrawTrackingGeometry(vis_helper, tgVolume, m_geometry_context);
+        vis_helper.write(m_ply_output_file());
     } else {
-        m_log->info("ACTS geometry filename defined by: '{}' is empty. NOT exporting geometry to .obj or whatever ", m_obj_output_file.m_name);
+        m_log->info("ACTS PLY Export. Flag '{}' is empty. NOT exporting.", m_ply_output_file.m_name);
     }
 
     exit(0);
-
 
     // Set ticker back
     m_app->SetTicker(was_ticker_enabled);
