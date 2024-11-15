@@ -289,6 +289,9 @@ datatypes :
       - int pad        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
       - int plane      // - Plane(id of z plane from 0 upstream  to 9 downstream)
       - double zToGem  // - ZtoGEM (m)
+      - double true_x  // - True hit x info (quiet_NaN() if not provided)
+      - double true_y  // - True hit y info (quiet_NaN() if not provided)
+      - double true_z  // - True hit z info (quiet_NaN() if not provided)
 
   edm4eic::TrackerHit:
     Description: "Tracker hit (reconstructed from Raw)"

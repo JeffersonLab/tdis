@@ -59,12 +59,15 @@ namespace tdis::io {
 
     /** POD structure for readout hits **/
     struct DigitizedReadoutHit {
-        double time;    // - Time of arrival at Pad (ns)
-        double adc;     // - Amplitude (ADC bin of sample)
-        int ring;       // - Ring (id of rin, 0 is innermost).
-        int pad;        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-        int plane;      // - Plane(id of z plane from 0 upstream  to 9 downstream)
-        double zToGem;  // - ZtoGEM (m)
+        double time;     // - Time of arrival at Pad (ns)
+        double adc;      // - Amplitude (ADC bin of sample)
+        int ring;        // - Ring (id of rin, 0 is innermost).
+        int pad;         // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+        int plane;       // - Plane(id of z plane from 0 upstream  to 9 downstream)
+        double zToGem;   // - ZtoGEM (m)
+        double true_x;   // - True hit x info (quiet_NaN() if not provided)
+        double true_y;   // - True hit y info (quiet_NaN() if not provided)
+        double true_z;   // - True hit z info (quiet_NaN() if not provided)
     };
 
     /** POD structure for readout track **/
@@ -240,12 +243,31 @@ namespace tdis::io {
             return false;
         }
 
-        result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
-        result.adc    = std::stod(tokens[1]);     // - Amplitude (ADC bin of sample)
-        result.ring   = std::stoi(tokens[2]);    // - Ring (id of rin, 0 is innermost).
-        result.pad    = std::stoi(tokens[3]);     // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-        result.plane  = std::stoi(tokens[4]);   // - Plane(id of z plane from 0 upstream  to 9 downstream)
-        result.zToGem = std::stod(tokens[5]);  // - ZtoGEM (m)
+        if(tokens.size() == 6) {
+            // Files with no true X Y Z hit info
+            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
+            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
+            result.ring   = std::stoi(tokens[2]);    // - Ring (id of rin, 0 is innermost).
+            result.pad    = std::stoi(tokens[3]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+            result.plane  = std::stoi(tokens[4]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
+            result.zToGem = std::stod(tokens[5]);    // - ZtoGEM (m)
+
+            // True hit information is not set
+            result.true_x = std::numeric_limits<double>::quiet_NaN();
+            result.true_y = std::numeric_limits<double>::quiet_NaN();
+            result.true_z = std::numeric_limits<double>::quiet_NaN();
+        } else {
+            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
+            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
+            result.true_x = std::stod(tokens[2]);    // True X Y Z of hit
+            result.true_y = std::stod(tokens[3]);
+            result.true_z = std::stod(tokens[4]);
+            result.ring   = std::stoi(tokens[5]);    // - Ring (id of rin, 0 is innermost).
+            result.pad    = std::stoi(tokens[6]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+            result.plane  = std::stoi(tokens[7]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
+            result.zToGem = std::stod(tokens[8]);    // - ZtoGEM (m)
+        }
+
         return true;
     }
 

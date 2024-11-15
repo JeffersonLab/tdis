@@ -45,6 +45,14 @@ add_executable(tdis
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h
+
+        tracking/BuildTelescopeDetector.cpp
+        tracking/BuildTelescopeDetector.hpp
+        tracking/TelescopeDetector.cpp
+        tracking/TelescopeDetector.hpp
+        tracking/TelescopeDetectorElement.cpp
+        tracking/TelescopeDetectorElement.hpp
+        # tracking/CKFTrackingFunction.cc
         # tracking/DD4hepBField.h
         # /tracking/DD4hepBField.cc
 )
@@ -73,7 +81,39 @@ set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 target_include_directories(tdis PRIVATE "podio_model")
 target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
 
+# ----------- Configure ACTS ExamplesLibrary --------
+# ExamplesLibrary actually creates ACTS event model
+# Get ActsExamples base
+get_target_property(ActsCore_LOCATION ActsCore LOCATION)
+get_filename_component(ActsCore_PATH ${ActsCore_LOCATION} DIRECTORY)
+set(ActsExamples_LIB ${ActsCore_PATH}/${CMAKE_SHARED_LIBRARY_PREFIX}ActsExamplesFramework${CMAKE_SHARED_LIBRARY_SUFFIX})
 
+# If acts is installed to / we are good but if acts is installed in some directory with structure /bin /include /lib
+# we need to get this directory and try to include include
+get_filename_component(Acts_HOME "${ActsCore_PATH}" DIRECTORY)
+set(Acts_HOME_INCLUDE "${Acts_HOME}/include")
+
+# List all ACTS variables
+message(STATUS "ACTS List all variables  : ${ActsExample_LIB}")
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    if (_variableName MATCHES "^Acts")
+        message(STATUS "   ${_variableName} = ${${_variableName}}")
+    endif()
+endforeach()
+
+# Add examples library and includes
+
+# Check if the directory exists and is accessible on the disk
+if(EXISTS "${Acts_HOME_INCLUDE}")
+    # Add the directory to the target's include directories only if it exists
+    target_include_directories(tdis PUBLIC SYSTEM "${Acts_HOME_INCLUDE}")
+    message(STATUS "Added include directory: ${Acts_HOME_INCLUDE}")
+else()
+    message(STATUS "Directory does not exist or is not accessible: ${Acts_HOME_INCLUDE}. It is OK if ACTS is installed in /")
+endif()
+
+target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
 
 # ----------- install destination -------------------
 install(TARGETS tdis DESTINATION bin)

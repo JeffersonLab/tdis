@@ -15,9 +15,11 @@
 #include <utility>
 
 #include "CLI/CLI.hpp"
-#include "io/PodioWriteProcessor.hpp"
 #include "io/DigitizedDataEventSource.hpp"
+#include "io/PodioWriteProcessor.hpp"
 #include "services/LogService.hpp"
+#include "tracking/ActsGeometryService.h"
+#include "tracking/ReconstructedHitFactory.h"
 
 struct ProgramArguments {
     std::map<std::string, std::string> params;
@@ -106,12 +108,15 @@ int main(int argc, char* argv[]) {
         parameterManager->SetParameter(name, value);
     }
 
-
-
     JApplication app(parameterManager);
+
+    // Register services:
+    app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
+    app.ProvideService(std::make_shared<tdis::tracking::ActsGeometryService>());
+
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
     app.Add(new tdis::io::PodioWriteProcessor(&app));
-    app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
+    app.Add(new JFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>);
     // app.Add(new JEventProcessorPodio);
     // app.Add(new JFactoryGeneratorT<ExampleClusterFactory>());
     // app.Add(new JFactoryGeneratorT<ExampleMultifactory>());

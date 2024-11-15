@@ -38,13 +38,7 @@ namespace eicrecon {
 
     class CKFTracking: public WithPodConfig<eicrecon::CKFTrackingConfig> {
     public:
-        /// Track finder function that takes input measurements, initial trackstate
-        /// and track finder options and returns some track-finder-specific result.
-        using TrackFinderOptions =
-            Acts::CombinatorialKalmanFilterOptions<ActsExamples::IndexSourceLinkAccessor::Iterator,
-                                                   Acts::VectorMultiTrajectory>;
-        using TrackFinderResult =
-            Acts::Result<std::vector<ActsExamples::TrackContainer::TrackProxy>>;
+
 
         /// Find function that takes the above parameters
         /// @note This is separated into a virtual interface to keep compilation units
