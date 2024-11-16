@@ -5,25 +5,37 @@
 #include <utility>     // For std::pair
 
 // Constants
-constexpr int num_rings = 21;
+constexpr int num_rings = 21 * Acts::UnitConstants::cm;
 constexpr int num_pads_per_ring = 122;
-constexpr double min_radius = 5.0;          // Minimum radius in cm
-constexpr double max_radius = 15.0;         // Maximum radius in cm
+constexpr double min_radius = 5.0 * Acts::UnitConstants::cm;          // Minimum radius in cm
+constexpr double max_radius = 15.0 * Acts::UnitConstants::cm;         // Maximum radius in cm
 constexpr double total_radius = max_radius - min_radius;  // Total radial width (10 cm)
 constexpr double ring_width = total_radius / num_rings;   // Radial width of each ring
 constexpr double delta_theta = 2 * M_PI / num_pads_per_ring;  // Angular width of each pad in radians
 
 namespace tdis {
-    inline std::tuple<double, double> getPadCenter(int ring, int pad) {
+
+    inline double getPadHight() {
+        /** gets pad height which is the distance between rings*/
+        return (max_radius - min_radius) / num_pads_per_ring;
+    }
+
+    inline double getPadApproxWidth(const int ring) {
+        /** gets pad approximate width calculated from curvature, which is not exact the width */
+        const double r = min_radius + (ring + 0.5) * getPadHight();
+        return r * 2 * M_PI / num_pads_per_ring;
+    }
+
+    inline std::tuple<double, double> getPadCenter(const int ring, const int pad) {
         /*
         Compute the X and Y coordinates of the center of a pad given its ring and pad indices.
 
         Parameters:
         - ring (int): The ring index (0 is the innermost ring).
-        - pad (int): The pad index (0 is at or closest to φ=0°, numbering is clockwise).
+        - pad (int): The pad index (0 is at or closest to φ=0, numbering is clockwise).
 
         Returns:
-        - std::pair<double, double>: X and Y coordinates of the pad center in cm.
+        - std::pair<double, double>: X and Y coordinates of the pad center in Acts::UnitConstants.
         */
 
         // Validate inputs
@@ -57,4 +69,5 @@ namespace tdis {
 
         return { x, y };
     }
+
 }

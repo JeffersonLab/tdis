@@ -9,99 +9,89 @@
 #include "podio_model/TrackerHit.h"
 #include "podio_model/TrackerHitCollection.h"
 
+namespace {
+    inline double get_resolution(const double pixel_size) {
+        constexpr const double sqrt_12 = 3.4641016151;
+        return pixel_size / sqrt_12;
+    }
+    inline double get_variance(const double pixel_size) {
+        const double res = get_resolution(pixel_size);
+        return res * res;
+    }
+} // namespace
+
 namespace tdis::tracking {
 
-
-
     struct ReconstructedHitFactory : public JOmniFactory<ReconstructedHitFactory> {
-
-        PodioInput<tdis::DigitizedMtpcMcHit> m_mc_hits_in {this};
-        PodioOutput<edm4eic::TrackerHit> m_tracker_hits_out {this};
+        PodioInput<tdis::DigitizedMtpcMcHit> m_mc_hits_in {this, {"DigitizedMtpcMcHit"}};
+        PodioOutput<edm4eic::TrackerHit> m_tracker_hits_out {this, "TrackerHit"};
         Service<ActsGeometryService> m_service_geometry{this};
-
+        Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true,"Use true hits xyz instead of digitized one"};
 
         void Configure() {
             m_service_geometry();
-
         }
 
         void ChangeRun(int32_t /*run_nr*/) {
         }
 
         void Execute(int32_t /*run_nr*/, uint64_t /*evt_nr*/) {
+            using namespace Acts::UnitLiterals;
 
-            auto result_hits = std::make_unique<edm4eic::TrackerHitCollection>();
+
+            auto rec_hits = std::make_unique<edm4eic::TrackerHitCollection>();
+            auto plane_positions = m_service_geometry->GetPlanePositions();
 
             for (auto mc_hit : *m_mc_hits_in()) {
 
-                auto [x,y] = getPadCenter(mc_hit.ring(), mc_hit.pad());
-                //#double z = getRing
+                const int plane = mc_hit.plane();
+                const int ring = mc_hit.ring();
+                const int pad = mc_hit.pad();
+                const double z_to_gem = mc_hit.zToGem();
 
-                //std::uint64_t cellID, edm4hep::Vector3f position, edm4eic::CovDiag3f positionError, float time, float timeError, float edep, float edepError
-                //cluster.addClusters(protocluster);
-                //cs->push_back(cluster);
-            }
+                auto [pad_x,pad_y] = getPadCenter(ring, pad);
+                double plane_z = m_service_geometry().GetPlanePositions()[plane];
 
-            m_tracker_hits_out() = std::move(result_hits);
 
-            /*
-             *auto rec_hits { std::make_unique<edm4eic::TrackerHitCollection>() };
+                // Planes are set back to back like this:
+                // |     ||     ||     ||    |
+                // This means that zToPlane is positive for even planes and negative for odd
+                // i.e.
+                // z = plane_z + zToPlane // for even
+                // z = plane_z - zToPlane // for odd
+                double calc_z = plane_z + (plane % 2 ? -z_to_gem : z_to_gem);
 
-    for (const auto& raw_hit : raw_hits) {
 
-        auto id = raw_hit.getCellID();
+                // Position
+                edm4hep::Vector3f position;
+                if(m_cfg_use_true_pos() && !std::isnan(mc_hit.truePosition().x)) {
+                    position.x = mc_hit.truePosition().x;
+                    position.y = mc_hit.truePosition().y;
+                    position.z = mc_hit.truePosition().z;
+                }
+                else {
+                    position.x = pad_x;
+                    position.y = pad_y;
+                    position.z = calc_z;
+                }
 
-        // Get position and dimension
-        auto pos = m_converter->position(id);
-        auto dim = m_converter->cellDimensions(id);
+                // Covariance
+                double max_dimension = std::max(getPadApproxWidth(ring), getPadHight());
+                double xy_variance = get_variance(max_dimension);
+                edm4eic::CovDiag3f cov{xy_variance, xy_variance, 1_cm};  // TODO correct Z variance
 
-        // >oO trace
-        if(m_log->level() == spdlog::level::trace) {
-            m_log->trace("position x={:.2f} y={:.2f} z={:.2f} [mm]: ", pos.x()/ mm, pos.y()/ mm, pos.z()/ mm);
-            m_log->trace("dimension size: {}", dim.size());
-            for (size_t j = 0; j < std::size(dim); ++j) {
-                m_log->trace(" - dimension {:<5} size: {:.2}",  j, dim[j]);
+                uint32_t cell_id = 1000000*mc_hit.plane() + 1000*mc_hit.ring() + mc_hit.pad();
+
+                rec_hits->create(
+                    cell_id,
+                    position,
+                    cov,
+                    static_cast<float>(mc_hit.time()),
+                    static_cast<float>(1_ns),                   // TODO correct time resolution
+                    static_cast<float>(mc_hit.adc()),
+                    0.0F);
+                m_tracker_hits_out() = std::move(rec_hits);
             }
         }
-
-        // Note about variance:
-        //    The variance is used to obtain a diagonal covariance matrix.
-        //    Note that the covariance matrix is written in DD4hep surface coordinates,
-        //    *NOT* global position coordinates. This implies that:
-        //      - XY segmentation: xx -> sigma_x, yy-> sigma_y, zz -> 0, tt -> 0
-        //      - XZ segmentation: xx -> sigma_x, yy-> sigma_z, zz -> 0, tt -> 0
-        //      - XYZ segmentation: xx -> sigma_x, yy-> sigma_y, zz -> sigma_z, tt -> 0
-        //    This is properly in line with how we get the local coordinates for the hit
-        //    in the TrackerSourceLinker.
- #if EDM4EIC_VERSION_MAJOR >= 7
-       auto rec_hit =
- #endif
-       rec_hits->create(
-            raw_hit.getCellID(), // Raw DD4hep cell ID
-            edm4hep::Vector3f{static_cast<float>(pos.x() / mm), static_cast<float>(pos.y() / mm), static_cast<float>(pos.z() / mm)}, // mm
-            edm4eic::CovDiag3f{get_variance(dim[0] / mm), get_variance(dim[1] / mm), // variance (see note above)
-            std::size(dim) > 2 ? get_variance(dim[2] / mm) : 0.},
-                static_cast<float>((double)(raw_hit.getTimeStamp()) / 1000.0), // ns
-            m_cfg.timeResolution,                            // in ns
-            static_cast<float>(raw_hit.getCharge() / 1.0e6),   // Collected energy (GeV)
-            0.0F);                                       // Error on the energy
-#if EDM4EIC_VERSION_MAJOR >= 7
-        rec_hit.setRawHit(raw_hit);
-#endif
-             * */
-        }
-
-        private:
-            static inline double get_resolution(const double pixel_size) {
-              constexpr const double sqrt_12 = 3.4641016151;
-              return pixel_size / sqrt_12;
-          }
-
-          static inline double get_variance(const double pixel_size) {
-                const double res = get_resolution(pixel_size);
-                return res * res;
-            }
-
     };
-
 }

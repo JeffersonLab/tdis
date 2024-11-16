@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
 
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
     app.Add(new tdis::io::PodioWriteProcessor(&app));
-    app.Add(new JFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>);
+    app.Add(new JFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>("TrackerHit"));
     // app.Add(new JEventProcessorPodio);
     // app.Add(new JFactoryGeneratorT<ExampleClusterFactory>());
     // app.Add(new JFactoryGeneratorT<ExampleMultifactory>());

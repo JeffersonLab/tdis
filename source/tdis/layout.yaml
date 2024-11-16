@@ -283,15 +283,13 @@ datatypes :
     Description: "TDIS MTPC Digitized track"
     Author: "Dmitry Romanov"
     Members:
-      - double time    // - Time of arrival at Pad (ns)
-      - double adc     // - Amplitude (ADC bin of sampa)
-      - int ring       // - Ring (id of rin, 0 is inner most).
-      - int pad        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-      - int plane      // - Plane(id of z plane from 0 upstream  to 9 downstream)
-      - double zToGem  // - ZtoGEM (m)
-      - double true_x  // - True hit x info (quiet_NaN() if not provided)
-      - double true_y  // - True hit y info (quiet_NaN() if not provided)
-      - double true_z  // - True hit z info (quiet_NaN() if not provided)
+      - double time                       // - Time of arrival at Pad (ns)
+      - double adc                        // - Amplitude (ADC bin of sampa)
+      - int ring                          // - Ring (id of rin, 0 is inner most).
+      - int pad                           // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+      - int plane                         // - Plane(id of z plane from 0 upstream  to 9 downstream)
+      - double zToGem                     // - ZtoGEM (m)
+      - edm4hep::Vector3f  truePosition   // - True hit x,y,z info (quiet_NaN() if not provided)
 
   edm4eic::TrackerHit:
     Description: "Tracker hit (reconstructed from Raw)"
@@ -299,7 +297,7 @@ datatypes :
     Members:
       - uint64_t           cellID            // The detector specific (geometrical) cell id.
       - edm4hep::Vector3f  position          // Hit (cell) position [mm]
-      - edm4eic::CovDiag3f positionError    // Covariance Matrix
+      - edm4eic::CovDiag3f positionError     // Covariance Matrix
       - float              time              // Hit time [ns]
       - float              timeError         // Error on the time
       - float              edep              // Energy deposit in this hit [GeV]

@@ -41,10 +41,9 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
+#include <Acts/Definitions/Units.hpp>
 #include <cctype>
-#include <chrono>
 #include <iostream>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -345,13 +344,21 @@ namespace tdis::io {
         podioTrack.vertexZ(track.vertexZ);
         podioTrack.momentum(track.momentum);
         for(auto& hit: track.hits) {
+
             auto podioHit = podioHits.create();
-            podioHit.time(   hit.time  );
+            podioHit.time(   hit.time * Acts::UnitConstants::ns  );
             podioHit.adc(    hit.adc   );
             podioHit.ring(   hit.ring  );
             podioHit.pad(    hit.pad   );
             podioHit.plane(  hit.plane );
-            podioHit.zToGem( hit.zToGem);
+            podioHit.zToGem( hit.zToGem  * Acts::UnitConstants::m);
+
+            edm4hep::Vector3f true_pos = edm4hep::Vector3f{
+                static_cast<float>(hit.true_x * Acts::UnitConstants::m),
+                static_cast<float>(hit.true_y * Acts::UnitConstants::m),
+                static_cast<float>(hit.true_z * Acts::UnitConstants::m)
+            };
+            podioHit.truePosition(true_pos);
             podioTrack.addhits(podioHit);
         }
 

@@ -23,7 +23,6 @@
 #include <string>
 #include <string_view>
 
-#include "ActsGeometryProvider.h"
 #include "BuildTelescopeDetector.hpp"
 #include "TelescopeDetector.hpp"
 #include "services/LogService.hpp"
@@ -324,15 +323,11 @@ void tdis::tracking::ActsGeometryService::Init() {
 
     findNodesWithPrefix(m_tgeo_manager->GetTopNode(), "mTPCReadoutDisc", disk_nodes);
 
-
-
-    std::vector<double> positions;
+    m_plane_positions.clear();
     std::vector<double> stereos;
     std::array<double, 2> offsets{{0, 0}};
     std::array<double, 2> bounds{{25, 100}};
     double thickness{0.1};
-    int surfaceType{(int) ActsExamples::Telescope::TelescopeSurfaceType::Disc};
-
 
     m_init_log->info("Found readout disks: {}", disk_nodes.size());
     for (auto node : disk_nodes) {
@@ -350,7 +345,7 @@ void tdis::tracking::ActsGeometryService::Init() {
             continue;
         }
 
-        TGeoTube* tube = dynamic_cast<TGeoTube*>(shape);
+        auto* tube = dynamic_cast<TGeoTube*>(shape);
         double r_min = tube->GetRmin();
         double r_max = tube->GetRmax();
         double dz = tube->GetDz();
@@ -363,7 +358,7 @@ void tdis::tracking::ActsGeometryService::Init() {
         m_log->info(fmt::format("   Position: ({:.4f}, {:.4f}, {:>8.4f}) cm, rmin: {:.3f} cm, rmax: {:.3f} cm, dz: {:.4f} cm, Node: '{}', Volume: '{}'",
                             x, y, z, r_min, r_max, dz, node->GetName(), volume->GetName()));
 
-        positions.push_back(z * Acts::UnitConstants::cm);
+        m_plane_positions.push_back(z * Acts::UnitConstants::cm);
         stereos.push_back(0);
     }
 
@@ -376,13 +371,13 @@ void tdis::tracking::ActsGeometryService::Init() {
     /// Return the telescope detector
     gGeometry =
         ActsExamples::Telescope::buildDetector(
-            nominalContext, // gctx is the detector element dependent geometry context
-            detectorStore,  // detectorStore is the store for the detector element
-            positions,          // positions are the positions of different layers in the longitudinal direction
-            stereos,  // stereoAngles are the stereo angles of different layers, which are rotation angles around the longitudinal (normal) direction
-            offsets,  // is the offset (u, v) of the layers in the transverse plane
-            bounds,         // bounds is the surface bound values, i.e. halfX and halfY if plane surface, and minR and maxR if disc surface
-            thickness,          // thickness is the material thickness of each layer
+            nominalContext,             // gctx is the detector element dependent geometry context
+            detectorStore,           // detectorStore is the store for the detector element
+            m_plane_positions,                  // positions are the positions of different layers in the longitudinal direction
+            stereos,                    // stereoAngles are the stereo angles of different layers, which are rotation angles around the longitudinal (normal) direction
+            offsets,                    // is the offset (u, v) of the layers in the transverse plane
+            bounds,                     // bounds is the surface bound values, i.e. halfX and halfY if plane surface, and minR and maxR if disc surface
+            thickness,                  // thickness is the material thickness of each layer
             ActsExamples::Telescope::TelescopeSurfaceType::Disc, // surfaceType is the detector surface type
             Acts::BinningValue::binZ);
 
@@ -410,8 +405,6 @@ void tdis::tracking::ActsGeometryService::Init() {
     } else {
         m_log->info("ACTS PLY Export. Flag '{}' is empty. NOT exporting.", m_ply_output_file.m_name);
     }
-
-    exit(0);
 
     // Set ticker back
     m_app->SetTicker(was_ticker_enabled);

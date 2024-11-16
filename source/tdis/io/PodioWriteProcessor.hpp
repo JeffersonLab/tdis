@@ -75,7 +75,10 @@ public:
 
         // Truth record
         "DigitizedMtpcMcTrack",
-        "DigitizedMtpcMcHit"
+        "DigitizedMtpcMcHit",
+
+        // Digitized hits
+        "TrackerHit"
     };
 
   PodioWriteProcessor(JApplication * app);

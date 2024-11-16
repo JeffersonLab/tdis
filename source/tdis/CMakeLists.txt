@@ -40,8 +40,6 @@ add_executable(tdis
         PadGeometryHelper.hpp
         io/DigitizedDataEventSource.hpp
         io/PodioWriteProcessor.hpp
-        tracking/ActsGeometryProvider.cc
-        tracking/ActsGeometryProvider.h
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h

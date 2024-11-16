@@ -9,11 +9,11 @@
 #include <TGeoManager.h>
 #include <spdlog/logger.h>
 
+#include <Acts/Geometry/TrackingGeometry.hpp>
 #include <Acts/Visualization/GeometryView3D.hpp>
 #include <memory>
 #include <mutex>
 
-#include "ActsGeometryProvider.h"
 #include "TelescopeDetectorElement.hpp"
 #include "services/LogService.hpp"
 
@@ -32,6 +32,8 @@ namespace tdis::tracking {
         TGeoNode* GetTopNode() const { return m_tgeo_manager->GetTopNode(); }
 
         Acts::GeometryContext& GetActsGeometryContext() { return m_geometry_context; }
+
+        const std::vector<double>& GetPlanePositions() const { return m_plane_positions; }
 
         template <typename TVis> void DrawTrackingGeometry(TVis& vis_helper,
                                                            const Acts::TrackingVolume& tVolume,
@@ -54,7 +56,7 @@ namespace tdis::tracking {
         std::shared_ptr<spdlog::logger> m_init_log;
 
         /// Root TGeo Manater for TGeo Geometry
-        TGeoManager* m_tgeo_manager;
+        TGeoManager* m_tgeo_manager = nullptr;
 
         Acts::GeometryContext m_geometry_context = Acts::GeometryContext();
 
@@ -64,6 +66,9 @@ namespace tdis::tracking {
             detectorStore;
 
         std::shared_ptr<const Acts::TrackingGeometry> gGeometry;
+
+        // Plane positions
+        std::vector<double> m_plane_positions;
     };
 
 
