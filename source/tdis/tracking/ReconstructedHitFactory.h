@@ -90,8 +90,8 @@ namespace tdis::tracking {
                     static_cast<float>(1_ns),                   // TODO correct time resolution
                     static_cast<float>(mc_hit.adc()),
                     0.0F);
-                m_tracker_hits_out() = std::move(rec_hits);
             }
+            m_tracker_hits_out() = std::move(rec_hits);
         }
     };
 }

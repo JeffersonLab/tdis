@@ -14,7 +14,7 @@
 #include <memory>
 #include <mutex>
 
-#include "TelescopeDetectorElement.hpp"
+#include "MtpcDetectorElement.hpp"
 #include "services/LogService.hpp"
 
 namespace tdis::tracking {
@@ -60,9 +60,9 @@ namespace tdis::tracking {
 
         Acts::GeometryContext m_geometry_context = Acts::GeometryContext();
 
-        ActsExamples::Telescope::TelescopeDetectorElement::ContextType nominalContext;
+        tdis::tracking::MtpcDetectorElement::ContextType nominalContext;
 
-        std::vector<std::shared_ptr<ActsExamples::Telescope::TelescopeDetectorElement>>
+        std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>>
             detectorStore;
 
         std::shared_ptr<const Acts::TrackingGeometry> gGeometry;

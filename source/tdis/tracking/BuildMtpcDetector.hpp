@@ -8,26 +8,20 @@
 
 #pragma once
 
-#include "Acts/Geometry/TrackingGeometry.hpp"
-#include "Acts/Utilities/BinUtility.hpp"
-#include "Acts/Utilities/BinningType.hpp"
-#include "TelescopeDetectorElement.hpp"
-
 #include <array>
 #include <memory>
 #include <vector>
+
+#include "Acts/Geometry/TrackingGeometry.hpp"
+#include "Acts/Utilities/BinUtility.hpp"
+#include "Acts/Utilities/BinningType.hpp"
+#include "MtpcDetectorElement.hpp"
 
 namespace Acts {
 class TrackingGeometry;
 }  // namespace Acts
 
-namespace ActsExamples::Telescope {
-
-/// The telescope detector surface type
-enum class TelescopeSurfaceType {
-  Plane = 0,
-  Disc = 1,
-};
+namespace tdis::tracking {
 
 /// Global method to build the telescope tracking geometry
 ///
@@ -39,19 +33,19 @@ enum class TelescopeSurfaceType {
 ///                     rotation angles around the longitudinal (normal)
 ///                     direction
 /// @param offsets is the offset (u, v) of the layers in the transverse plane
-/// @param bounds is the surface bound values, i.e. halfX and halfY if plane
-///               surface, and minR and maxR if disc surface
+/// @param bounds is the surface bound values, i.e. minR and maxR
 /// @param thickness is the material thickness of each layer
-/// @param surfaceType is the detector surface type
+
 /// @param binValue indicates which axis the detector surface normals are
 /// parallel to
 std::unique_ptr<const Acts::TrackingGeometry> buildDetector(
-    const typename TelescopeDetectorElement::ContextType& gctx,
-    std::vector<std::shared_ptr<TelescopeDetectorElement>>& detectorStore,
+    const typename MtpcDetectorElement::ContextType& gctx,
+    std::vector<std::shared_ptr<MtpcDetectorElement>>& detectorStore,
     const std::vector<double>& positions,
     const std::vector<double>& stereoAngles,
-    const std::array<double, 2>& offsets, const std::array<double, 2>& bounds,
-    double thickness, TelescopeSurfaceType surfaceType,
+    const std::array<double, 2>& offsets,
+    const std::array<double, 2>& bounds,
+    double thickness,
     Acts::BinningValue binValue = Acts::BinningValue::binZ);
 
 }  // namespace ActsExamples::Telescope

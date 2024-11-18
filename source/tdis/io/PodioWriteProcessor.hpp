@@ -36,19 +36,9 @@
  *    repeated exceptions and potential crashes.
  */
 
+#include <JANA/JApplication.h>
 #include <JANA/JEvent.h>
 #include <JANA/JEventProcessor.h>
-#include <podio/podioVersion.h>
-#include <podio/ROOTWriter.h>
-#include <spdlog/logger.h>
-#include <memory>
-#include <mutex>
-#include <set>
-#include <string>
-#include <vector>
-
-
-#include <JANA/JApplication.h>
 #include <JANA/JLogger.h>
 #include <JANA/Services/JParameterManager.h>
 #include <JANA/Utils/JTypeInfo.h>
@@ -57,11 +47,18 @@
 #include <podio/Frame.h>
 #include <podio/ROOTWriter.h>
 #include <podio/podioVersion.h>
+#include <spdlog/logger.h>
 
 #include <chrono>
 #include <exception>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <string>
 #include <thread>
+#include <vector>
 
+#include "podio_model/TrackerHit.h"
 #include "services/LogService.hpp"
 
 namespace tdis::io {
@@ -142,6 +139,7 @@ inline void PodioWriteProcessor::Init() {
 
 inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    auto hits = event->GetCollection<edm4eic::TrackerHit>("TrackerHit");
 
     m_log->info("PodioWriteProcessor::Process() All event collections:");
     auto event_collections = event->GetAllCollectionNames();

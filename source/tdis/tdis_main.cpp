@@ -11,6 +11,7 @@
 
 #include <JANA/JApplication.h>
 #include <JANA/Services/JParameterManager.h>
+#include <JANA/Components/JOmniFactoryGeneratorT.h>
 
 #include <utility>
 
@@ -114,9 +115,13 @@ int main(int argc, char* argv[]) {
     app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
     app.ProvideService(std::make_shared<tdis::tracking::ActsGeometryService>());
 
+    auto reco_hit_generator = new JOmniFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>();
+    reco_hit_generator->AddWiring("TrackerHitGenerator", {"DigitizedMtpcMcHit"}, {"TrackerHit"});
+    app.Add(reco_hit_generator);
+
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
     app.Add(new tdis::io::PodioWriteProcessor(&app));
-    app.Add(new JFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>("TrackerHit"));
+
     // app.Add(new JEventProcessorPodio);
     // app.Add(new JFactoryGeneratorT<ExampleClusterFactory>());
     // app.Add(new JFactoryGeneratorT<ExampleMultifactory>());

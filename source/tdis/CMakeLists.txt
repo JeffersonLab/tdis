@@ -43,13 +43,10 @@ add_executable(tdis
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h
-
-        tracking/BuildTelescopeDetector.cpp
-        tracking/BuildTelescopeDetector.hpp
-        tracking/TelescopeDetector.cpp
-        tracking/TelescopeDetector.hpp
-        tracking/TelescopeDetectorElement.cpp
-        tracking/TelescopeDetectorElement.hpp
+        tracking/BuildMtpcDetector.cpp
+        tracking/BuildMtpcDetector.hpp
+        tracking/MtpcDetectorElement.cpp
+        tracking/MtpcDetectorElement.hpp
         # tracking/CKFTrackingFunction.cc
         # tracking/DD4hepBField.h
         # /tracking/DD4hepBField.cc

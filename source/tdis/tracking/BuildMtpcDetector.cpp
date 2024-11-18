@@ -6,7 +6,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "BuildTelescopeDetector.hpp"
+#include <algorithm>
+#include <cstddef>
+#include <utility>
 
 #include "Acts/Definitions/Algebra.hpp"
 #include "Acts/Definitions/Units.hpp"
@@ -28,17 +30,22 @@
 #include "Acts/Surfaces/Surface.hpp"
 #include "Acts/Surfaces/SurfaceArray.hpp"
 #include "Acts/Utilities/Logger.hpp"
-
-#include <algorithm>
-#include <cstddef>
-#include <utility>
+#include "BuildMtpcDetector.hpp"
 
 std::unique_ptr<const Acts::TrackingGeometry>
-ActsExamples::Telescope::buildDetector(const typename ActsExamples::Telescope::TelescopeDetectorElement::ContextType &gctx, std::vector<std::shared_ptr<ActsExamples::Telescope::TelescopeDetectorElement> > &detectorStore, const std::vector<double> &positions, const std::vector<double> &stereoAngles, const std::array<double, 2> &offsets, const std::array<double, 2> &bounds, double thickness, ActsExamples::Telescope::TelescopeSurfaceType surfaceType, Acts::BinningValue binValue) {
+tdis::tracking::buildDetector(
+    const typename tdis::tracking::MtpcDetectorElement::ContextType &gctx,
+    std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement> > &detectorStore,
+    const std::vector<double> &positions,
+    const std::vector<double> &stereoAngles,
+    const std::array<double, 2> &offsets,
+    const std::array<double, 2> &bounds,
+    double thickness,
+    Acts::BinningValue binValue)
+{
     using namespace Acts::UnitLiterals;
 
-    // The rectangle bounds for plane surface
-    const auto pBounds = std::make_shared<const Acts::RectangleBounds>(bounds[0], bounds[1]);
+
     // The radial bounds for disc surface
     const auto rBounds = std::make_shared<const Acts::RadialBounds>(bounds[0], bounds[1]);
 
@@ -76,24 +83,20 @@ ActsExamples::Telescope::buildDetector(const typename ActsExamples::Telescope::T
         trafo *= Acts::AngleAxis3(stereo, Acts::Vector3::UnitZ());
 
         // Create the detector element
-        std::shared_ptr<TelescopeDetectorElement> detElement = nullptr;
-        if (surfaceType == TelescopeSurfaceType::Plane) {
-            detElement = std::make_shared<TelescopeDetectorElement>(std::make_shared<const Acts::Transform3>(trafo), pBounds, 1._um, surfaceMaterial);
-        } else {
-            detElement = std::make_shared<TelescopeDetectorElement>(std::make_shared<const Acts::Transform3>(trafo), rBounds, 1._um, surfaceMaterial);
-        }
+        std::shared_ptr<MtpcDetectorElement> detElement = nullptr;
+
+        detElement = std::make_shared<MtpcDetectorElement>(std::make_shared<const Acts::Transform3>(trafo), rBounds, 1._um, i,  surfaceMaterial);
+
         // Get the surface
         auto surface = detElement->surface().getSharedPtr();
+
         // Add the detector element to the detector store
         detectorStore.push_back(std::move(detElement));
         // Construct the surface array (one surface contained)
         std::unique_ptr<Acts::SurfaceArray> surArray(new Acts::SurfaceArray(surface));
         // Construct the layer
-        if (surfaceType == TelescopeSurfaceType::Plane) {
-            layers[i] = Acts::PlaneLayer::create(trafo, pBounds, std::move(surArray), thickness);
-        } else {
-            layers[i] = Acts::DiscLayer::create(trafo, rBounds, std::move(surArray), thickness);
-        }
+        layers[i] = Acts::DiscLayer::create(trafo, rBounds, std::move(surArray), thickness);
+
         // Associate the layer to the surface
         auto mutableSurface = const_cast<Acts::Surface *>(surface.get());
         mutableSurface->associateLayer(*layers[i]);
@@ -107,11 +110,7 @@ ActsExamples::Telescope::buildDetector(const typename ActsExamples::Telescope::T
     // or cylinder with discs
     auto length = positions.back() - positions.front();
     std::shared_ptr<Acts::VolumeBounds> boundsVol = nullptr;
-    if (surfaceType == TelescopeSurfaceType::Plane) {
-        boundsVol = std::make_shared<Acts::CuboidVolumeBounds>(bounds[0] + 5._mm, bounds[1] + 5._mm, length + 10._mm);
-    } else {
-        boundsVol = std::make_shared<Acts::CylinderVolumeBounds>(std::max(bounds[0] - 5.0_mm, 0.), bounds[1] + 5._mm, length + 10._mm);
-    }
+    boundsVol = std::make_shared<Acts::CylinderVolumeBounds>(std::max(bounds[0] - 5.0_mm, 0.), bounds[1] + 5._mm, length + 10._mm);
 
     Acts::LayerArrayCreator::Config lacConfig;
     Acts::LayerArrayCreator layArrCreator(lacConfig, Acts::getDefaultLogger("LayerArrayCreator", Acts::Logging::INFO));
