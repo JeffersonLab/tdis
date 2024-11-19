@@ -39,6 +39,11 @@ namespace tdis::tracking {
                                                            const Acts::TrackingVolume& tVolume,
                                                            const Acts::GeometryContext& gctx);
 
+        /// Basically returns GEM plane information
+        std::shared_ptr<tdis::tracking::MtpcDetectorElement> GetDetectorElement(size_t index) const {
+            return m_detector_elements[index];
+        }
+
       private:
         Parameter<std::string> m_tgeo_file{this, "acts:geometry", "g4sbs_mtpc.root","TGeo filename with geometry for ACTS"};
         Parameter<std::string> m_material_map_file{this, "acts:material_map", "", "JSON/CBOR material map file path"};
@@ -62,8 +67,7 @@ namespace tdis::tracking {
 
         tdis::tracking::MtpcDetectorElement::ContextType nominalContext;
 
-        std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>>
-            detectorStore;
+        std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
 
         std::shared_ptr<const Acts::TrackingGeometry> gGeometry;
 

@@ -370,7 +370,7 @@ void tdis::tracking::ActsGeometryService::Init() {
     /// Return the telescope detector
     gGeometry = tdis::tracking::buildDetector(
             nominalContext,             // gctx is the detector element dependent geometry context
-            detectorStore,              // detectorStore is the store for the detector element
+            m_detector_elements,              // detectorStore is the store for the detector element
             m_plane_positions,          // positions are the positions of different layers in the longitudinal direction
             stereos,                    // stereoAngles are the stereo angles of different layers, which are rotation angles around the longitudinal (normal) direction
             offsets,                    // is the offset (u, v) of the layers in the transverse plane

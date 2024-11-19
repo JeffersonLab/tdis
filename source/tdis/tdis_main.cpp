@@ -21,6 +21,7 @@
 #include "services/LogService.hpp"
 #include "tracking/ActsGeometryService.h"
 #include "tracking/ReconstructedHitFactory.h"
+// #include "tracking/Measurement2DFactory.h"
 
 struct ProgramArguments {
     std::map<std::string, std::string> params;
@@ -116,8 +117,15 @@ int main(int argc, char* argv[]) {
     app.ProvideService(std::make_shared<tdis::tracking::ActsGeometryService>());
 
     auto reco_hit_generator = new JOmniFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>();
-    reco_hit_generator->AddWiring("TrackerHitGenerator", {"DigitizedMtpcMcHit"}, {"TrackerHit"});
+    reco_hit_generator->AddWiring(
+        "TrackerHitGenerator",
+        {"DigitizedMtpcMcHit"},
+        {"TrackerHit", "Measurement2D"});
     app.Add(reco_hit_generator);
+
+    // auto measurement_2d_generator = new JOmniFactoryGeneratorT<tdis::tracking::Measurement2DFactory>();
+    // measurement_2d_generator->AddWiring("TrackerHitGenerator", {"TrackerHit"}, {"Measurement2D"});
+    // app.Add(measurement_2d_generator);
 
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
     app.Add(new tdis::io::PodioWriteProcessor(&app));

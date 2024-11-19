@@ -47,9 +47,10 @@ add_executable(tdis
         tracking/BuildMtpcDetector.hpp
         tracking/MtpcDetectorElement.cpp
         tracking/MtpcDetectorElement.hpp
-        # tracking/CKFTrackingFunction.cc
-        # tracking/DD4hepBField.h
-        # /tracking/DD4hepBField.cc
+        # tracking/Measurement2DFactory.h
+        tracking/TruthTrackParameterFactory.h
+        tracking/KalmanFittingFactory.h
+
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------
