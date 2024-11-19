@@ -75,7 +75,9 @@ public:
         "DigitizedMtpcMcHit",
 
         // Digitized hits
-        "TrackerHit"
+        "TrackerHit",
+        "Measurement2D",
+        "TruthTrackInitParameters",
     };
 
   PodioWriteProcessor(JApplication * app);
