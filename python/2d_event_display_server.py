@@ -111,7 +111,8 @@ def prepare_hits_data(hits):
         # Get x, y position
         x, y = get_pad_center(ring, pad)
         # Compute z position in cm
-        z_hit_cm = plane * plane_spacing_cm + ZtoGEM_m * 100  # Convert ZtoGEM from m to cm
+        dz = ZtoGEM_m if plane % 2 == 0 else -ZtoGEM_m
+        z_hit_cm = plane * plane_spacing_cm + dz * 100  # Convert ZtoGEM from m to cm
         # Append to lists
         hit_times.append(time_arrival_ns)
         hit_xs.append(x)
