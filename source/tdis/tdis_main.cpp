@@ -9,15 +9,20 @@
 // #include <podio/ROOTFrameWriter.h>
 // #include <podio/ROOTFrameReader.h>
 
+#include <JANA/Components/JOmniFactoryGeneratorT.h>
 #include <JANA/JApplication.h>
 #include <JANA/Services/JParameterManager.h>
 
 #include <utility>
 
 #include "CLI/CLI.hpp"
-#include "io/PodioWriteProcessor.hpp"
 #include "io/DigitizedDataEventSource.hpp"
+#include "io/PodioWriteProcessor.hpp"
 #include "services/LogService.hpp"
+#include "tracking/ActsGeometryService.h"
+#include "tracking/ReconstructedHitFactory.h"
+#include "tracking/TruthTrackParameterFactory.h"
+// #include "tracking/Measurement2DFactory.h"
 
 struct ProgramArguments {
     std::map<std::string, std::string> params;
@@ -106,12 +111,33 @@ int main(int argc, char* argv[]) {
         parameterManager->SetParameter(name, value);
     }
 
-
-
     JApplication app(parameterManager);
-    app.Add(new JEventSourceGeneratorT<tdis::readout::DigitizedDataEventSource>);
-    app.Add(new PodioWriteProcessor(&app));
+
+    // Register services:
     app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
+    app.ProvideService(std::make_shared<tdis::tracking::ActsGeometryService>());
+
+    auto reco_hit_generator = new JOmniFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>();
+    reco_hit_generator->AddWiring(
+        "TrackerHitGenerator",
+        {"DigitizedMtpcMcHit"},
+        {"TrackerHit", "Measurement2D"});
+    app.Add(reco_hit_generator);
+
+    auto truth_track_init_generator = new JOmniFactoryGeneratorT<tdis::tracking::TruthTrackParameterFactory>();
+    truth_track_init_generator->AddWiring(
+        "TruthTrackParameterGenerator",
+        {"DigitizedMtpcMcTrack"},
+        {"TruthTrackInitParameters"});
+    app.Add(truth_track_init_generator);
+
+    // auto measurement_2d_generator = new JOmniFactoryGeneratorT<tdis::tracking::Measurement2DFactory>();
+    // measurement_2d_generator->AddWiring("TrackerHitGenerator", {"TrackerHit"}, {"Measurement2D"});
+    // app.Add(measurement_2d_generator);
+
+    app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
+    app.Add(new tdis::io::PodioWriteProcessor(&app));
+
     // app.Add(new JEventProcessorPodio);
     // app.Add(new JFactoryGeneratorT<ExampleClusterFactory>());
     // app.Add(new JFactoryGeneratorT<ExampleMultifactory>());

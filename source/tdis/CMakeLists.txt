@@ -13,6 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 cmake_policy(SET CMP0144 NEW)
 
 
+# --------- FETCH DEPENDENCIES --------------
 # Fetch CLI11
 include(FetchContent)
 FetchContent_Declare(
@@ -23,13 +24,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(CLI11)
 
 
-
 # --------- GENERATE PODIO --------------
 find_package(podio REQUIRED)
 PODIO_GENERATE_DATAMODEL(podio_model "layout.yaml" DATAMODEL_HEADERS DATAMODEL_SOURCES OUTPUT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/podio_model")
 PODIO_ADD_DATAMODEL_CORE_LIB(podio_model_lib "${DATAMODEL_HEADERS}" "${DATAMODEL_SOURCES}")
 PODIO_ADD_ROOT_IO_DICT(podio_model_dict podio_model_lib "${DATAMODEL_HEADERS}" "podio_model/src/selection.xml")
-message(STATUS "PODIO MODEL DICT: ${podio_model_dict}")
 
 target_include_directories(podio_model_lib PRIVATE "podio_model")
 target_include_directories(podio_model_dict PRIVATE "podio_model")
@@ -41,13 +40,18 @@ add_executable(tdis
         PadGeometryHelper.hpp
         io/DigitizedDataEventSource.hpp
         io/PodioWriteProcessor.hpp
-        tracking/ActsGeometryProvider.cc
-        tracking/ActsGeometryProvider.h
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h
-        # tracking/DD4hepBField.h
-        # /tracking/DD4hepBField.cc
+        tracking/BuildMtpcDetector.cpp
+        tracking/BuildMtpcDetector.hpp
+        tracking/MtpcDetectorElement.cpp
+        tracking/MtpcDetectorElement.hpp
+        # tracking/Measurement2DFactory.h
+        tracking/TruthTrackParameterFactory.h
+        tracking/KalmanFittingFactory.h
+        tracking/CKFTracking.h
+        tracking/CKFTracking.cc
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------
@@ -55,17 +59,58 @@ find_package(JANA REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Boost REQUIRED)
-
+find_package(ROOT COMPONENTS Core RIO Hist Graf Gpad Tree Postscript Matrix Physics MathCore)
 find_package(Acts REQUIRED COMPONENTS Core PluginTGeo PluginJson)
 
 target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
-target_link_libraries(tdis ${JANA_LIB} podio::podio podio::podioRootIO podio_model_lib podio_model_dict spdlog::spdlog fmt::fmt CLI11::CLI11 Boost::boost ActsCore ActsPluginTGeo ActsPluginJson)
+target_link_libraries(tdis
+        ${JANA_LIB}
+        ROOT::RIO ROOT::Core
+        podio::podio podio::podioRootIO podio_model_lib podio_model_dict
+        spdlog::spdlog
+        fmt::fmt
+        CLI11::CLI11
+        Boost::boost
+        ActsCore ActsPluginTGeo ActsPluginJson
+)
 
 set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 target_include_directories(tdis PRIVATE "podio_model")
 target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
 
+# ----------- Configure ACTS ExamplesLibrary --------
+# ExamplesLibrary actually creates ACTS event model
+# Get ActsExamples base
+get_target_property(ActsCore_LOCATION ActsCore LOCATION)
+get_filename_component(ActsCore_PATH ${ActsCore_LOCATION} DIRECTORY)
+set(ActsExamples_LIB ${ActsCore_PATH}/${CMAKE_SHARED_LIBRARY_PREFIX}ActsExamplesFramework${CMAKE_SHARED_LIBRARY_SUFFIX})
 
+# If acts is installed to / we are good but if acts is installed in some directory with structure /bin /include /lib
+# we need to get this directory and try to include include
+get_filename_component(Acts_HOME "${ActsCore_PATH}" DIRECTORY)
+set(Acts_HOME_INCLUDE "${Acts_HOME}/include")
+
+# List all ACTS variables
+message(STATUS "ACTS List all variables  : ${ActsExample_LIB}")
+get_cmake_property(_variableNames VARIABLES)
+foreach (_variableName ${_variableNames})
+    if (_variableName MATCHES "^Acts")
+        message(STATUS "   ${_variableName} = ${${_variableName}}")
+    endif()
+endforeach()
+
+# Add examples library and includes
+
+# Check if the directory exists and is accessible on the disk
+if(EXISTS "${Acts_HOME_INCLUDE}")
+    # Add the directory to the target's include directories only if it exists
+    target_include_directories(tdis PUBLIC SYSTEM "${Acts_HOME_INCLUDE}")
+    message(STATUS "Added include directory: ${Acts_HOME_INCLUDE}")
+else()
+    message(STATUS "Directory does not exist or is not accessible: ${Acts_HOME_INCLUDE}. It is OK if ACTS is installed in /")
+endif()
+
+target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
 
 # ----------- install destination -------------------
 install(TARGETS tdis DESTINATION bin)
@@ -103,61 +148,3 @@ if(WITH_TESTS)
         message(WARNING "Catch2 not found, unit tests will not be built.")
     endif()
 endif()
-
-#
-#
-## Function creates ${PLUGIN_NAME}_plugin and ${PLUGIN_NAME}_library targets
-## Setting default includes, libraries and installation paths
-#plugin_add(${PLUGIN_NAME})
-#
-## The macro grabs sources as *.cc *.cpp *.c and headers as *.h *.hh *.hpp Then
-## correctly sets sources for ${_name}_plugin and ${_name}_library targets Adds
-## headers to the correct installation directory
-#plugin_glob_all(${PLUGIN_NAME})
-#
-## Find dependencies
-#
-#plugin_add_acts(${PLUGIN_NAME})
-#plugin_add_cern_root(${PLUGIN_NAME})
-#plugin_add_event_model(${PLUGIN_NAME})
-#
-#
-#
-#plugin_sources(${PLUGIN_NAME} ${DATAMODEL_HEADERS} ${DATAMODEL_SOURCES})
-
-
-#set(PodioExample_SOURCES
-#        PodioExample.cc
-#        PodioExampleProcessor.cc
-#        PodioExampleSource.cc
-#        ExampleClusterFactory.cc
-#        ExampleMultifactory.cc
-#        )
-#
-#foreach( _conf ${CMAKE_CONFIGURATION_TYPES} )
-#    string(TOUPPER ${_conf} _conf )
-#    set( CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_conf} ${CMAKE_CURRENT_BINARY_DIR} )
-#    set( CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_conf} ${CMAKE_CURRENT_BINARY_DIR} )
-#    set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${_conf} ${CMAKE_CURRENT_BINARY_DIR} )
-#endforeach()
-#
-#PODIO_GENERATE_DATAMODEL(datamodel layout.yaml DATAMODEL_HEADERS DATAMODEL_SOURCES IO_BACKEND_HANDLERS ROOT)
-#
-#PODIO_ADD_DATAMODEL_CORE_LIB(PodioExampleDatamodel "${DATAMODEL_HEADERS}" "${DATAMODEL_SOURCES}")
-#
-#PODIO_ADD_ROOT_IO_DICT(PodioExampleDatamodelDict PodioExampleDatamodel "${DATAMODEL_HEADERS}" src/selection.xml)
-#
-#
-#
-#add_executable(PodioExample ${PodioExample_SOURCES})
-#target_include_directories(PodioExample PUBLIC .)
-#target_link_libraries(PodioExample jana2 podio::podio PodioExampleDatamodel PodioExampleDatamodelDict podio::podioRootIO)
-#set_target_properties(PodioExample PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
-#
-#install(TARGETS PodioExample DESTINATION bin)
-#install(TARGETS PodioExampleDatamodel DESTINATION lib)
-#install(TARGETS PodioExampleDatamodelDict DESTINATION lib)
-
-
-
-

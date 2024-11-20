@@ -252,7 +252,7 @@ components:
       - std::array<double,16> transform   // row-wise 4x4 affine transform [R T; 0 1] with 3x3 rotation matrix R and translation column 3-vector T
 
 datatypes :
-  EventInfo:
+  tdis::EventInfo:
     Description : "Event info"
     Author : "N. Brei"
     Members :
@@ -260,14 +260,14 @@ datatypes :
       - int TimesliceNumber   // timeslice number
       - int RunNumber         // run number
 
-  TimesliceInfo:
+  tdis::TimesliceInfo:
     Description : "Timeslice info"
     Author : "N. Brei"
     Members :
       - int TimesliceNumber // timeslice number
       - int RunNumber // run number
 
-  DigitizedMtpcMcTrack:
+  tdis::DigitizedMtpcMcTrack:
     Description: "TDIS MTPC Digitized track"
     Author: "Dmitry Romanov"
     Members:
@@ -283,12 +283,13 @@ datatypes :
     Description: "TDIS MTPC Digitized track"
     Author: "Dmitry Romanov"
     Members:
-      - double time    // - Time of arrival at Pad (ns)
-      - double adc     // - Amplitude (ADC bin of sampa)
-      - int ring       // - Ring (id of rin, 0 is inner most).
-      - int pad        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-      - int plane      // - Plane(id of z plane from 0 upstream  to 9 downstream)
-      - double zToGem  // - ZtoGEM (m)
+      - double time                       // - Time of arrival at Pad (ns)
+      - double adc                        // - Amplitude (ADC bin of sampa)
+      - int ring                          // - Ring (id of rin, 0 is inner most).
+      - int pad                           // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+      - int plane                         // - Plane(id of z plane from 0 upstream  to 9 downstream)
+      - double zToGem                     // - ZtoGEM (m)
+      - edm4hep::Vector3f  truePosition   // - True hit x,y,z info (quiet_NaN() if not provided)
 
   edm4eic::TrackerHit:
     Description: "Tracker hit (reconstructed from Raw)"

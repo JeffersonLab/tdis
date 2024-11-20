@@ -41,10 +41,9 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
+#include <Acts/Definitions/Units.hpp>
 #include <cctype>
-#include <chrono>
 #include <iostream>
-#include <ranges>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -55,16 +54,19 @@
 #include "podio_model/EventInfoCollection.h"
 #include "services/LogService.hpp"
 
-namespace tdis::readout {
+namespace tdis::io {
 
     /** POD structure for readout hits **/
     struct DigitizedReadoutHit {
-        double time;    // - Time of arrival at Pad (ns)
-        double adc;     // - Amplitude (ADC bin of sample)
-        int ring;       // - Ring (id of rin, 0 is innermost).
-        int pad;        // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-        int plane;      // - Plane(id of z plane from 0 upstream  to 9 downstream)
-        double zToGem;  // - ZtoGEM (m)
+        double time;     // - Time of arrival at Pad (ns)
+        double adc;      // - Amplitude (ADC bin of sample)
+        int ring;        // - Ring (id of rin, 0 is innermost).
+        int pad;         // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+        int plane;       // - Plane(id of z plane from 0 upstream  to 9 downstream)
+        double zToGem;   // - ZtoGEM (m)
+        double true_x;   // - True hit x info (quiet_NaN() if not provided)
+        double true_y;   // - True hit y info (quiet_NaN() if not provided)
+        double true_z;   // - True hit z info (quiet_NaN() if not provided)
     };
 
     /** POD structure for readout track **/
@@ -240,12 +242,31 @@ namespace tdis::readout {
             return false;
         }
 
-        result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
-        result.adc    = std::stod(tokens[1]);     // - Amplitude (ADC bin of sample)
-        result.ring   = std::stoi(tokens[2]);    // - Ring (id of rin, 0 is innermost).
-        result.pad    = std::stoi(tokens[3]);     // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-        result.plane  = std::stoi(tokens[4]);   // - Plane(id of z plane from 0 upstream  to 9 downstream)
-        result.zToGem = std::stod(tokens[5]);  // - ZtoGEM (m)
+        if(tokens.size() == 6) {
+            // Files with no true X Y Z hit info
+            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
+            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
+            result.ring   = std::stoi(tokens[2]);    // - Ring (id of rin, 0 is innermost).
+            result.pad    = std::stoi(tokens[3]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+            result.plane  = std::stoi(tokens[4]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
+            result.zToGem = std::stod(tokens[5]);    // - ZtoGEM (m)
+
+            // True hit information is not set
+            result.true_x = std::numeric_limits<double>::quiet_NaN();
+            result.true_y = std::numeric_limits<double>::quiet_NaN();
+            result.true_z = std::numeric_limits<double>::quiet_NaN();
+        } else {
+            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
+            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
+            result.true_x = std::stod(tokens[2]);    // True X Y Z of hit
+            result.true_y = std::stod(tokens[3]);
+            result.true_z = std::stod(tokens[4]);
+            result.ring   = std::stoi(tokens[5]);    // - Ring (id of rin, 0 is innermost).
+            result.pad    = std::stoi(tokens[6]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
+            result.plane  = std::stoi(tokens[7]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
+            result.zToGem = std::stod(tokens[8]);    // - ZtoGEM (m)
+        }
+
         return true;
     }
 
@@ -323,21 +344,29 @@ namespace tdis::readout {
         podioTrack.vertexZ(track.vertexZ);
         podioTrack.momentum(track.momentum);
         for(auto& hit: track.hits) {
+
             auto podioHit = podioHits.create();
-            podioHit.time(   hit.time  );
+            podioHit.time(   hit.time * Acts::UnitConstants::ns  );
             podioHit.adc(    hit.adc   );
             podioHit.ring(   hit.ring  );
             podioHit.pad(    hit.pad   );
             podioHit.plane(  hit.plane );
-            podioHit.zToGem( hit.zToGem);
+            podioHit.zToGem( hit.zToGem  * Acts::UnitConstants::m);
+
+            edm4hep::Vector3f true_pos = edm4hep::Vector3f{
+                static_cast<float>(hit.true_x * Acts::UnitConstants::m),
+                static_cast<float>(hit.true_y * Acts::UnitConstants::m),
+                static_cast<float>(hit.true_z * Acts::UnitConstants::m)
+            };
+            podioHit.truePosition(true_pos);
             podioTrack.addhits(podioHit);
         }
 
         EventInfoCollection info;
         info.push_back(MutableEventInfo(0, 0, 0)); // event nr, timeslice nr, run nr
         event.InsertCollection<EventInfo>(std::move(info), "EventInfo");
-        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "McTracks");
-        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "McHits");
+        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTrack");
+        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHit");
         m_log->info("Event has been emitted at {}", m_event_line_index);
         return Result::Success;
     }
@@ -352,7 +381,7 @@ namespace tdis::readout {
 
 // The template specialization needs to be in the global namespace (or at least not inside the tdis namespace)
 template <>
-inline double JEventSourceGeneratorT<tdis::readout::DigitizedDataEventSource>::CheckOpenable(std::string resource_name) {
+inline double JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>::CheckOpenable(std::string resource_name) {
   // CheckOpenable() decides how confident we are that this EventSource can handle this resource.
   //    0.0        -> 'Cannot handle'
   //    (0.0, 1.0] -> 'Cean handle, with this confidence level'
