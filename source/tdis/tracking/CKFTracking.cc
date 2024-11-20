@@ -7,47 +7,35 @@
 #include <Acts/Definitions/TrackParametrization.hpp>
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/EventData/GenericBoundTrackParameters.hpp>
-#if Acts_VERSION_MAJOR < 36
-#include <Acts/EventData/Measurement.hpp>
-#endif
-#include <Acts/EventData/MultiTrajectory.hpp>
-#include <Acts/EventData/ParticleHypothesis.hpp>
-#if Acts_VERSION_MAJOR >= 32
-#include "Acts/EventData/ProxyAccessor.hpp"
-#endif
 #include <Acts/EventData/SourceLink.hpp>
 #include <Acts/EventData/TrackContainer.hpp>
 #include <Acts/EventData/TrackProxy.hpp>
 #include <Acts/EventData/VectorMultiTrajectory.hpp>
 #include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
-#if Acts_VERSION_MAJOR >= 34
-#include "Acts/Propagator/AbortList.hpp"
 #include "Acts/Propagator/EigenStepper.hpp"
 #include "Acts/Propagator/MaterialInteractor.hpp"
 #include "Acts/Propagator/Navigator.hpp"
-#endif
 #include <Acts/Propagator/Propagator.hpp>
-#if Acts_VERSION_MAJOR >= 34
 #include "Acts/Propagator/StandardAborters.hpp"
-#endif
+
 #include <Acts/Surfaces/PerigeeSurface.hpp>
 #include <Acts/Surfaces/Surface.hpp>
 #include <Acts/TrackFitting/GainMatrixSmoother.hpp>
 #include <Acts/TrackFitting/GainMatrixUpdater.hpp>
 #include <Acts/Utilities/Logger.hpp>
-#if Acts_VERSION_MAJOR >= 34
+
 #include "Acts/Utilities/TrackHelpers.hpp"
-#endif
+
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 #include <ActsExamples/EventData/Measurement.hpp>
 #include <ActsExamples/EventData/MeasurementCalibration.hpp>
 #include <ActsExamples/EventData/Track.hpp>
-#include <edm4eic/Cov3f.h>
-#include <edm4eic/Cov6f.h>
-#include <edm4eic/Measurement2DCollection.h>
-#include <edm4eic/TrackParametersCollection.h>
-#include <edm4hep/Vector2f.h>
+#include <podio_model/Cov3f.h>
+#include <podio_model/Cov6f.h>
+#include <podio_model/Measurement2DCollection.h>
+#include <podio_model/TrackParametersCollection.h>
+#include <podio_model/Vector2f.h>
 #include <fmt/core.h>
 #include <Eigen/Core>
 #include <array>
@@ -58,8 +46,6 @@
 #include <optional>
 #include <utility>
 
-#include "ActsGeometryProvider.h"
-#include "DD4hepBField.h"
 #include "extensions/spdlog/SpdlogFormatters.h" // IWYU pragma: keep
 #include "extensions/spdlog/SpdlogToActs.h"
 

@@ -30,8 +30,7 @@ namespace tdis::tracking {
         PodioOutput<edm4eic::Measurement2D> m_measurements_out{this, "Measurement2D"};
         Service<ActsGeometryService> m_service_geometry{this};
         Service<services::LogService> m_service_log{this};
-        Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true,
-                                           "Use true hits xyz instead of digitized one"};
+        Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true, "Use true hits xyz instead of digitized one"};
 
         std::shared_ptr<spdlog::logger> m_log;
 

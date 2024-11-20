@@ -16,16 +16,16 @@
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 #include <ActsExamples/EventData/Track.hpp>
 #include <ActsExamples/EventData/Trajectories.hpp>
-#include <edm4eic/Measurement2DCollection.h>
-#include <edm4eic/TrackParametersCollection.h>
+#include <podio_model/Measurement2DCollection.h>
+#include <podio_model/TrackParametersCollection.h>
 #include <spdlog/logger.h>
 #include <memory>
 #include <tuple>
 #include <vector>
 
-#include "CKFTrackingConfig.h"
+
 #include "DD4hepBField.h"
-#include "algorithms/interfaces/WithPodConfig.h"
+
 
 class ActsGeometryProvider;
 
@@ -36,7 +36,7 @@ namespace eicrecon {
  * \ingroup tracking
  */
 
-    class CKFTracking: public WithPodConfig<eicrecon::CKFTrackingConfig> {
+    class CKFTracking {
     public:
 
 
@@ -71,21 +71,6 @@ namespace eicrecon {
         process(const edm4eic::Measurement2DCollection& meas2Ds,
                 const edm4eic::TrackParametersCollection &init_trk_params);
 
-    private:
-        std::shared_ptr<spdlog::logger> m_log;
-        std::shared_ptr<const Acts::Logger> m_acts_logger{nullptr};
-        std::shared_ptr<CKFTrackingFunction> m_trackFinderFunc;
-        std::shared_ptr<const ActsGeometryProvider> m_geoSvc;
-
-        std::shared_ptr<const eicrecon::BField::DD4hepBField> m_BField = nullptr;
-        Acts::GeometryContext m_geoctx;
-        Acts::CalibrationContext m_calibctx;
-        Acts::MagneticFieldContext m_fieldctx;
-
-        Acts::MeasurementSelector::Config m_sourcelinkSelectorCfg;
-
-        /// Private access to the logging instance
-        const Acts::Logger& logger() const { return *m_acts_logger; }
     };
 
 } // namespace eicrecon::Reco
