@@ -8,7 +8,7 @@ export const ringWidth = totalRadius / numRings;
 export const deltaTheta = (2 * Math.PI) / numPadsPerRing;
 
 export const planePositions = [
-    
+
 ]
 
 

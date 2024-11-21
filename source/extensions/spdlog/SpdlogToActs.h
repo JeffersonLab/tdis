@@ -22,7 +22,7 @@
 #include <Acts/Utilities/Logger.hpp>
 #include <JANA/JException.h>
 
-namespace eicrecon {
+namespace tdis {
 
 using namespace Acts::Logging;
 
@@ -135,11 +135,11 @@ class SpdlogPrintPolicy final : public Acts::Logging::OutputPrintPolicy {
     std::vector<std::tuple<std::string, std::regex, std::size_t, Acts::Logging::Level>> m_suppressions;
 };
 
-inline std::unique_ptr<const Acts::Logger> getSpdlogLogger(
+inline std::unique_ptr<const Acts::Logger> makeActsLogger(
     const std::string& name,
     std::shared_ptr<spdlog::logger> log,
-    std::vector<std::string> suppressions = {}) {
-
+    std::vector<std::string> suppressions = {})
+{
   const Acts::Logging::Level lvl = SpdlogToActsLevel(log->level());
   auto output = std::make_unique<Acts::Logging::NamedOutputDecorator>(
       std::make_unique<SpdlogPrintPolicy>(log, suppressions),

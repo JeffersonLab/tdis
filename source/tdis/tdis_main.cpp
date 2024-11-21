@@ -22,6 +22,7 @@
 #include "tracking/ActsGeometryService.h"
 #include "tracking/ReconstructedHitFactory.h"
 #include "tracking/TruthTrackParameterFactory.h"
+#include "tracking/KalmanFittingFactory.h"
 // #include "tracking/Measurement2DFactory.h"
 
 struct ProgramArguments {
@@ -117,19 +118,26 @@ int main(int argc, char* argv[]) {
     app.ProvideService(std::make_shared<tdis::services::LogService>(&app));
     app.ProvideService(std::make_shared<tdis::tracking::ActsGeometryService>());
 
-    auto reco_hit_generator = new JOmniFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>();
-    reco_hit_generator->AddWiring(
+    auto recoHitGenerator = new JOmniFactoryGeneratorT<tdis::tracking::ReconstructedHitFactory>();
+    recoHitGenerator->AddWiring(
         "TrackerHitGenerator",
         {"DigitizedMtpcMcHit"},
         {"TrackerHit", "Measurement2D"});
-    app.Add(reco_hit_generator);
+    app.Add(recoHitGenerator);
 
-    auto truth_track_init_generator = new JOmniFactoryGeneratorT<tdis::tracking::TruthTrackParameterFactory>();
-    truth_track_init_generator->AddWiring(
+    auto truthTrackInitGenerator = new JOmniFactoryGeneratorT<tdis::tracking::TruthTrackParameterFactory>();
+    truthTrackInitGenerator->AddWiring(
         "TruthTrackParameterGenerator",
         {"DigitizedMtpcMcTrack"},
         {"TruthTrackInitParameters"});
-    app.Add(truth_track_init_generator);
+    app.Add(truthTrackInitGenerator);
+
+    auto kalmanFitterGenerator = new JOmniFactoryGeneratorT<tdis::tracking::KalmanFittingFactory>();
+    kalmanFitterGenerator->AddWiring(
+        "KalmanFitterGenerator",
+        {"TruthTrackInitParameters", "Measurement2D"},
+        {"ConstTrackContainer"});
+    app.Add(kalmanFitterGenerator);
 
     // auto measurement_2d_generator = new JOmniFactoryGeneratorT<tdis::tracking::Measurement2DFactory>();
     // measurement_2d_generator->AddWiring("TrackerHitGenerator", {"TrackerHit"}, {"Measurement2D"});

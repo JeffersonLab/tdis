@@ -275,7 +275,7 @@ void tdis::tracking::ActsGeometryService::Init() {
 
 
     // Set ACTS logging level
-    auto acts_init_log_level = eicrecon::SpdlogToActsLevel(m_init_log->level());
+    auto acts_init_log_level = tdis::SpdlogToActsLevel(m_init_log->level());
 
     // Load ACTS materials maps
     std::shared_ptr<const Acts::IMaterialDecorator> materialDeco{nullptr};
@@ -295,7 +295,7 @@ void tdis::tracking::ActsGeometryService::Init() {
 
     // Convert DD4hep geometry to ACTS
     m_init_log->info("Converting TGeo geometry to ACTS...");
-    auto logger = eicrecon::getSpdlogLogger("CONV", m_log);
+    auto logger = tdis::makeActsLogger("CONV", m_log);
 
     m_log->info("Loading geometry file: ");
     m_log->info("   '{}'", m_tgeo_file());

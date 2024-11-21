@@ -49,6 +49,7 @@
 #include <podio/podioVersion.h>
 #include <spdlog/logger.h>
 
+#include <ActsExamples/EventData/Track.hpp>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -74,10 +75,11 @@ public:
         "DigitizedMtpcMcTrack",
         "DigitizedMtpcMcHit",
 
-        // Digitized hits
+
         "TrackerHit",
         "Measurement2D",
         "TruthTrackInitParameters",
+        "ConstTrackContainer"
     };
 
   PodioWriteProcessor(JApplication * app);
@@ -141,7 +143,9 @@ inline void PodioWriteProcessor::Init() {
 
 inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto hits = event->GetCollection<edm4eic::TrackerHit>("TrackerHit");
+    // auto hits = event->GetCollection<edm4eic::TrackerHit>("TrackerHit");
+
+    [[maybe_unused]] auto tracks = event->Get<ActsExamples::ConstTrackContainer>("ConstTrackContainer");
 
     m_log->info("PodioWriteProcessor::Process() All event collections:");
     auto event_collections = event->GetAllCollectionNames();
@@ -161,6 +165,7 @@ inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& ev
             [[maybe_unused]] const auto* coll_ptr = event->GetCollectionBase(coll_name);
             m_collections_to_write.push_back(coll_name);
         } catch (std::exception& e) {
+            m_log->warn("Exception trying to produce: {}, message:  {}", coll_name, e.what());
             // chomp
         }
     }
@@ -262,7 +267,6 @@ inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& ev
     m_log->info("PODIO checkConsistency missing_names: {}", missing_names.size());
     for (const auto& coll_name : missing_names) {
         m_log->info("   {}", coll_name);
-
     }
     m_is_first_event = false;
 }

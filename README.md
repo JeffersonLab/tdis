@@ -7,9 +7,17 @@ tdis
 -pnthreads=1
 -pjana:nevents=10
 -ppodio:output_file=/mnt/data/test_output_v01.root
--ppodio:print_collections=McHits
--pacts:geometry=/mnt/data/
+-pacts:geometry=/mnt/data/g4sbs_mtpc.root
+-pacts:round_tgeo_values=0
+-pacts:output_obj=/mnt/data/acts_geom.obj
+-pacts:output_ply=/mnt/data/acts_geom.ply
+-ptracking:hit_reco:log_level=trace
 /mnt/data/g4sbsout_EPCEvents_200000.txt
+```
+
+To print specific collection before the output
+```bash 
+-ppodio:print_collections=TrackerHit
 ```
 
 ##
