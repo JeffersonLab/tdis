@@ -50,8 +50,9 @@ add_executable(tdis
         # tracking/Measurement2DFactory.h
         tracking/TruthTrackParameterFactory.h
         tracking/KalmanFittingFactory.h
-        tracking/CKFTracking.h
-        tracking/CKFTracking.cc
+        tracking/KalmanFittingFactory.cpp
+        # tracking/CKFTracking.h
+        # tracking/CKFTracking.cc
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------

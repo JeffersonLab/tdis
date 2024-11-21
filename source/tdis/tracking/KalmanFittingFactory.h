@@ -2,8 +2,15 @@
 
 #include <JANA/Components/JOmniFactory.h>
 #include <JANA/JFactory.h>
+#include <spdlog/logger.h>
 
 #include <ActsExamples/EventData/Track.hpp>
+
+#include "ActsGeometryService.h"
+#include "podio_model/DigitizedMtpcMcHit.h"
+#include "podio_model/Measurement2D.h"
+#include "podio_model/TrackParameters.h"
+#include "services/LogService.hpp"
 
 namespace tdis::tracking {
 
@@ -11,10 +18,17 @@ namespace tdis::tracking {
 
     struct KalmanFittingFactory : public JOmniFactory<KalmanFittingFactory> {
 
-        PodioInput<tdis::DigitizedMtpcMcHit> m_mc_hits_in{this, {"DigitizedMtpcMcHit"}};
-        PodioOutput<edm4eic::TrackerHit> m_tracker_hits_out{this, "TrackerHit"};
-        PodioOutput<edm4eic::Measurement2D> m_measurements_out{this, "Measurement2D"};
-        Service<ActsGeometryService> m_service_geometry{this};
+        PodioInput<edm4eic::TrackParameters> m_parameters_input {this};
+        PodioInput<edm4eic::Measurement2D> m_measurements_input {this};
+        Output<ActsExamples::Trajectories> m_acts_trajectories_output {this};
+        Output<ActsExamples::ConstTrackContainer> m_acts_tracks_output {this};
+
+        ParameterRef<std::vector<double>> m_etaBins {this, "EtaBins", config().etaBins, "Eta Bins for ACTS CKF tracking reco"};
+        ParameterRef<std::vector<double>> m_chi2CutOff {this, "Chi2CutOff", config().chi2CutOff, "Chi2 Cut Off for ACTS CKF tracking"};
+        ParameterRef<std::vector<size_t>> m_numMeasurementsCutOff {this, "NumMeasurementsCutOff", config().numMeasurementsCutOff, "Number of measurements Cut Off for ACTS CKF tracking"};
+
+
+        Service<ActsGeometryService> m_serviceGeometry{this};
         Service<services::LogService> m_service_log{this};
         Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true, "Use true hits xyz instead of digitized one"};
 
@@ -66,8 +80,8 @@ namespace tdis::tracking {
     private:
         std::shared_ptr<spdlog::logger> m_log;
         std::shared_ptr<const Acts::Logger> m_acts_logger{nullptr};
-        std::shared_ptr<CKFTrackingFunction> m_trackFinderFunc;
-        std::shared_ptr<const ActsGeometryProvider> m_geoSvc;
+        // std::shared_ptr<CKFTrackingFunction> m_trackFinderFunc;
+
 
         std::shared_ptr<const eicrecon::BField::DD4hepBField> m_BField = nullptr;
         Acts::GeometryContext m_geoctx;

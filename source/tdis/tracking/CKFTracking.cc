@@ -307,11 +307,8 @@ namespace eicrecon {
         auto& constTracks = *(constTracks_v.front());
 
         // Seed number column accessor
-#if Acts_VERSION_MAJOR >= 32
+
         const Acts::ConstProxyAccessor<unsigned int> constSeedNumber("seed");
-#else
-        const Acts::ConstTrackAccessor<unsigned int> constSeedNumber("seed");
-#endif
 
         // Prepare the output data with MultiTrajectory, per seed
         std::vector<ActsExamples::Trajectories*> acts_trajectories;

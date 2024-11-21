@@ -71,6 +71,21 @@ namespace eicrecon {
         process(const edm4eic::Measurement2DCollection& meas2Ds,
                 const edm4eic::TrackParametersCollection &init_trk_params);
 
+    private:
+        std::shared_ptr<spdlog::logger> m_log;
+        std::shared_ptr<const Acts::Logger> m_acts_logger{nullptr};
+        std::shared_ptr<CKFTrackingFunction> m_trackFinderFunc;
+        std::shared_ptr<const ActsGeometryProvider> m_geoSvc;
+
+        std::shared_ptr<const eicrecon::BField::DD4hepBField> m_BField = nullptr;
+        Acts::GeometryContext m_geoctx;
+        Acts::CalibrationContext m_calibctx;
+        Acts::MagneticFieldContext m_fieldctx;
+
+        Acts::MeasurementSelector::Config m_sourcelinkSelectorCfg;
+
+        /// Private access to the logging instance
+        const Acts::Logger& logger() const { return *m_acts_logger; }
     };
 
 } // namespace eicrecon::Reco
