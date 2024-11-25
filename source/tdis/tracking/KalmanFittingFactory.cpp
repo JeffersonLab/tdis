@@ -50,6 +50,12 @@
 
 #include <extensions/spdlog/SpdlogToActs.h>
 
+#include "TrackFitterFunction.hpp"
+
+
+namespace ActsExamples {
+    class TrackFitterFunction;
+}
 
 void tdis::tracking::KalmanFittingFactory::Configure()
 {
@@ -80,6 +86,31 @@ void tdis::tracking::KalmanFittingFactory::Execute(int32_t runNumber, uint64_t e
     m_log->debug("{}::Execute", this->GetTypeName());
 
     std::shared_ptr<ActsExamples::TrackFitterFunction> fit;
+
+    // Construct a perigee surface as the target surface
+    auto pSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+        Acts::Vector3{0., 0., 0.});
+
+    // Type erased calibrator for the measurements
+    std::shared_ptr<ActsExamples::MeasurementCalibrator> calibrator;
+
+    double bz = 1.5 * Acts::UnitConstants::T;
+
+    auto field = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0.0, 0.0, bz));
+
+
+    // Construct the MagneticFieldContext using the cache
+    Acts::MagneticFieldContext magFieldContext;
+    // Create a cache for the magnetic field
+    //Acts::ConstantBField::Cache magFieldCache = field->makeCache(magFieldContext);
+    Acts::CalibrationContext calibrationContext;
+
+    ActsExamples::TrackFitterFunction::GeneralFitterOptions options{
+
+        m_serviceGeometry->GetActsGeometryContext(),
+        magFieldContext, calibrationContext, pSurface.get(),
+        Acts::PropagatorPlainOptions(m_serviceGeometry->GetActsGeometryContext(), magFieldContext)};
+
 
 }
 
