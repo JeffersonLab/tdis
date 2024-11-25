@@ -31,6 +31,7 @@
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 #include <ActsExamples/EventData/Measurement.hpp>
 #include <ActsExamples/EventData/MeasurementCalibration.hpp>
+
 #include <ActsExamples/EventData/Track.hpp>
 //#include <edm4eic/Cov3f.h>
 //#include <edm4eic/Cov6f.h>
@@ -77,6 +78,8 @@ void tdis::tracking::KalmanFittingFactory::Execute(int32_t runNumber, uint64_t e
 {
 
     m_log->debug("{}::Execute", this->GetTypeName());
+
+    std::shared_ptr<ActsExamples::TrackFitterFunction> fit;
 
 }
 

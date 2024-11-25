@@ -53,6 +53,11 @@ add_executable(tdis
         tracking/KalmanFittingFactory.cpp
         # tracking/CKFTracking.h
         # tracking/CKFTracking.cc
+        tracking/TrackFitterFunction.hpp
+        tracking/KalmanFitterFunction.cpp
+        tracking/RefittingCalibrator.hpp
+        tracking/RefittingCalibrator.cpp
+
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------
@@ -66,6 +71,7 @@ find_package(Acts REQUIRED COMPONENTS Core PluginTGeo PluginJson)
 target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
 target_link_libraries(tdis
         ${JANA_LIB}
+        libc++
         ROOT::RIO ROOT::Core
         podio::podio podio::podioRootIO podio_model_lib podio_model_dict
         spdlog::spdlog
