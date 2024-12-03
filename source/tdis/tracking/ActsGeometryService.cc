@@ -368,7 +368,7 @@ void tdis::tracking::ActsGeometryService::Init() {
 
 
     /// Return the telescope detector
-    gGeometry = tdis::tracking::buildDetector(
+    gGeometry = tdis::tracking::buildOriginalDetector(
             nominalContext,             // gctx is the detector element dependent geometry context
             m_detector_elements,              // detectorStore is the store for the detector element
             m_plane_positions,          // positions are the positions of different layers in the longitudinal direction

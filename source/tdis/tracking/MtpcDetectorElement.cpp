@@ -1,27 +1,73 @@
-// This file is part of the Acts project.
-//
-// Copyright (C) 2020-2021 CERN for the benefit of the Acts project
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-#include "Acts/Surfaces/DiscSurface.hpp"
-#include "Acts/Surfaces/PlaneSurface.hpp"
 #include "MtpcDetectorElement.hpp"
 
+#include "Acts/Geometry/GeometryContext.hpp"
+#include "Acts/Surfaces/CylinderBounds.hpp"
+#include "Acts/Surfaces/Surface.hpp"
 
-tdis::tracking::MtpcDetectorElement::MtpcDetectorElement(
-    std::shared_ptr<const Acts::Transform3> transform,
-    std::shared_ptr<const Acts::DiscBounds> dBounds,
-    double thickness,
-    int gem_plane_id,
-    std::shared_ptr<const Acts::ISurfaceMaterial> material)
-    : Acts::DetectorElementBase(),
-      m_elementTransform(std::move(transform)),
-      m_elementSurface(Acts::Surface::makeShared<Acts::DiscSurface>(dBounds, *this)),
-      m_elementThickness(thickness),
-      m_gem_plane_id(gem_plane_id),
-      m_elementDiscBounds(std::move(dBounds)) {
-  m_elementSurface->assignSurfaceMaterial(std::move(material));
+#include <Acts/Surfaces/CylinderSurface.hpp>
+
+#include "Acts/Definitions/Algebra.hpp"
+
+namespace tdis::tracking {
+    // Implementation
+
+    inline MtpcDetectorElement::MtpcDetectorElement(
+        uint32_t planeId,
+        std::shared_ptr<const Acts::Transform3> transform,
+        std::shared_ptr<const Acts::CylinderBounds> cBounds,
+        double thickness,
+        std::shared_ptr<const Acts::ISurfaceMaterial> material)
+        : m_elementTransform(std::move(transform)),
+          m_elementThickness(thickness),
+          m_elementCylinderBounds(std::move(cBounds)),
+          m_id(planeId)
+    {
+        // Create the cylinder surface
+        m_elementSurface = Acts::Surface::makeShared<Acts::CylinderSurface>(
+            this, // Detector element pointer
+            *m_elementTransform,
+            *m_elementCylinderBounds);
+
+        if (material) {
+            m_elementSurface->assignSurfaceMaterial(material);
+        }
+    }
+
+    inline const Acts::Surface& MtpcDetectorElement::surface() const { return *m_elementSurface; }
+
+    inline Acts::Surface& MtpcDetectorElement::surface() { return *m_elementSurface; }
+
+    inline double MtpcDetectorElement::thickness() const { return m_elementThickness; }
+
+    inline const Acts::Transform3& MtpcDetectorElement::transform(const Acts::GeometryContext& gctx) const
+    {
+        // Check if a different transform than the nominal exists
+        if (!m_alignedTransforms.empty()) {
+            // Cast into the right context object
+            auto alignContext = gctx.get<ContextType>();
+            return (*m_alignedTransforms[alignContext.iov].get());
+        }
+        // Return the standard transform if not found
+        return nominalTransform(gctx);
+    }
+
+    inline const Acts::Transform3& MtpcDetectorElement::nominalTransform(const Acts::GeometryContext& /*gctx*/) const
+    {
+        return *m_elementTransform;
+    }
+
+    inline void MtpcDetectorElement::addAlignedTransform(std::unique_ptr<Acts::Transform3> alignedTransform, unsigned int iov)
+    {
+        // Ensure the vector is large enough
+        auto size = m_alignedTransforms.size();
+        if (iov >= size) {
+            m_alignedTransforms.resize(iov + 1);
+        }
+        m_alignedTransforms[iov] = std::move(alignedTransform);
+    }
+
+    inline const std::vector<std::unique_ptr<Acts::Transform3>>&
+    MtpcDetectorElement::alignedTransforms() const {
+        return m_alignedTransforms;
+    }
 }
