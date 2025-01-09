@@ -70,7 +70,7 @@ namespace tdis::tracking {
         /// The aligned transforms
         std::vector<std::unique_ptr<Acts::Transform3> > m_alignedTransforms = {};
         /// The surface represented by it
-        std::shared_ptr<Acts::Surface> m_elementSurface = nullptr;
+        std::shared_ptr<Acts::CylinderSurface> m_elementSurface = nullptr;
         /// The element thickness
         double m_elementThickness = 0.;
         /// The cylinder bounds

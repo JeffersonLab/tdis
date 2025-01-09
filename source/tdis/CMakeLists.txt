@@ -43,7 +43,7 @@ add_executable(tdis
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h
-        tracking/BuildMtpcDetector.cpp
+        tracking/BuildMtpcDetector.cpp.v1.bck
         tracking/BuildMtpcDetector.hpp
         tracking/MtpcDetectorElement.cpp
         tracking/MtpcDetectorElement.hpp
@@ -57,6 +57,10 @@ add_executable(tdis
         tracking/KalmanFitterFunction.cpp
         tracking/RefittingCalibrator.hpp
         tracking/RefittingCalibrator.cpp
+        tracking/BuildMtpcDetector.hpp
+        tracking/BuildMtpcDetectorCG.cpp
+        tracking/BuildMtpcDetectorGEM.cpp
+        tracking/BuildMtpcDetectorGEM.hpp
 
 )
 
