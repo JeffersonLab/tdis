@@ -40,7 +40,7 @@ RUN apt-get update &&\
                        libfmt-dev libxft-dev libboost-program-options-dev libboost-dev libxpm-dev   \
                        libxerces-c3-dev occt-misc libvdt-dev libglu1-mesa-dev libgraphviz-dev \
                        libgsl-dev qtwebengine5-dev nlohmann-json3-dev &&\
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Set clang as default
 RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60

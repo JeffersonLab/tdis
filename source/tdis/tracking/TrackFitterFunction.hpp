@@ -23,7 +23,7 @@
 #include "ActsExamples/EventData/Measurement.hpp"
 #include "ActsExamples/EventData/MeasurementCalibration.hpp"
 #include "ActsExamples/EventData/Track.hpp"
-#include "ActsExamples/TrackFitting/RefittingCalibrator.hpp"
+#include "RefittingCalibrator.hpp"
 
 namespace ActsExamples {
 

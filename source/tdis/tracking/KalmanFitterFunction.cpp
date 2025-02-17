@@ -27,7 +27,7 @@
 #include "ActsExamples/EventData/IndexSourceLink.hpp"
 #include "ActsExamples/EventData/MeasurementCalibration.hpp"
 #include "ActsExamples/EventData/Track.hpp"
-#include "ActsExamples/TrackFitting/RefittingCalibrator.hpp"
+#include "RefittingCalibrator.hpp"
 #include "TrackFitterFunction.hpp"
 
 #include <algorithm>
@@ -50,8 +50,7 @@ using Stepper = Acts::SympyStepper;
 using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
 using Fitter = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
 using DirectPropagator = Acts::Propagator<Stepper, Acts::DirectNavigator>;
-using DirectFitter =
-    Acts::KalmanFitter<DirectPropagator, Acts::VectorMultiTrajectory>;
+using DirectFitter = Acts::KalmanFitter<DirectPropagator, Acts::VectorMultiTrajectory>;
 
 using TrackContainer =
     Acts::TrackContainer<Acts::VectorTrackContainer,
@@ -169,25 +168,19 @@ ActsExamples::makeKalmanFitterFunction(
   cfg.resolveMaterial = true;
   cfg.resolveSensitive = true;
   Acts::Navigator navigator(cfg, logger.cloneWithSuffix("Navigator"));
-  Propagator propagator(stepper, std::move(navigator),
-                        logger.cloneWithSuffix("Propagator"));
+  Propagator propagator(stepper, std::move(navigator), logger.cloneWithSuffix("Propagator"));
   Fitter trackFitter(std::move(propagator), logger.cloneWithSuffix("Fitter"));
 
   // Direct fitter
-  Acts::DirectNavigator directNavigator{
-      logger.cloneWithSuffix("DirectNavigator")};
-  DirectPropagator directPropagator(stepper, std::move(directNavigator),
-                                    logger.cloneWithSuffix("DirectPropagator"));
-  DirectFitter directTrackFitter(std::move(directPropagator),
-                                 logger.cloneWithSuffix("DirectFitter"));
+  Acts::DirectNavigator directNavigator{logger.cloneWithSuffix("DirectNavigator")};
+  DirectPropagator directPropagator(stepper, std::move(directNavigator),logger.cloneWithSuffix("DirectPropagator"));
+  DirectFitter directTrackFitter(std::move(directPropagator),logger.cloneWithSuffix("DirectFitter"));
 
   // build the fitter function. owns the fitter object.
-  auto fitterFunction = std::make_shared<KalmanFitterFunctionImpl>(
-      std::move(trackFitter), std::move(directTrackFitter), geo);
+  auto fitterFunction = std::make_shared<KalmanFitterFunctionImpl>(std::move(trackFitter), std::move(directTrackFitter), geo);
   fitterFunction->multipleScattering = multipleScattering;
   fitterFunction->energyLoss = energyLoss;
-  fitterFunction->reverseFilteringLogic.momentumThreshold =
-      reverseFilteringMomThreshold;
+  fitterFunction->reverseFilteringLogic.momentumThreshold = reverseFilteringMomThreshold;
   fitterFunction->freeToBoundCorrection = freeToBoundCorrection;
 
   return fitterFunction;

@@ -85,8 +85,6 @@ namespace tdis::tracking {
                 const auto& p = mc_track.momentum();
                 const auto pmag = std::hypot(px, py, pz);
 
-
-
                 // modify initial momentum to avoid bleeding truth to results when fit fails
                 const auto pinit = pmag * generateNormal(1, m_cfg_momentum_smear()*Acts::UnitConstants::GeV);
 
@@ -132,6 +130,7 @@ namespace tdis::tracking {
                 cov(4,4) = 0.1; // qOverP
                 cov(5,5) = 10e9; // time
                 track_parameter.covariance(cov);
+
 
                 // // Debug output
                 // if (m_log->level() <= spdlog::level::debug) {

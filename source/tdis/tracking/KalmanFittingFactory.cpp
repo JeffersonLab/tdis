@@ -31,6 +31,7 @@
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 #include <ActsExamples/EventData/Measurement.hpp>
 #include <ActsExamples/EventData/MeasurementCalibration.hpp>
+#include <podio_model/TrackParametersCollection.h>
 
 #include <ActsExamples/EventData/Track.hpp>
 //#include <edm4eic/Cov3f.h>
@@ -106,10 +107,54 @@ void tdis::tracking::KalmanFittingFactory::Execute(int32_t runNumber, uint64_t e
     Acts::CalibrationContext calibrationContext;
 
     ActsExamples::TrackFitterFunction::GeneralFitterOptions options{
-
         m_serviceGeometry->GetActsGeometryContext(),
         magFieldContext, calibrationContext, pSurface.get(),
         Acts::PropagatorPlainOptions(m_serviceGeometry->GetActsGeometryContext(), magFieldContext)};
+
+    auto trackContainer = std::make_shared<Acts::VectorTrackContainer>();
+    auto trackStateContainer = std::make_shared<Acts::VectorMultiTrajectory>();
+    Acts::TrackContainer tracks(trackContainer, trackStateContainer);
+
+    // Perform the fit for each input track
+    std::vector<Acts::SourceLink> trackSourceLinks;
+
+    for (auto track: *m_parameters_input()) {
+        track.
+
+    }
+
+    // // Clear & reserve the right size
+    // trackSourceLinks.clear();
+    // trackSourceLinks.reserve(protoTrack.size());
+    //
+    // // Fill the source links via their indices from the container
+    // for (auto measIndex : protoTrack) {
+    //     ConstVariableBoundMeasurementProxy measurement =
+    //         measurements.getMeasurement(measIndex);
+    //     IndexSourceLink sourceLink(measurement.geometryId(), measIndex);
+    //     trackSourceLinks.push_back(Acts::SourceLink(sourceLink));
+    // }
+    //
+    // ACTS_DEBUG("Invoke direct fitter for track " << itrack);
+    // auto result = (*m_cfg.fit)(trackSourceLinks, initialParams, options,
+    //                            calibrator, tracks);
+    //
+    // if (result.ok()) {
+    //     // Get the fit output object
+    //     const auto& track = result.value();
+    //     if (track.hasReferenceSurface()) {
+    //         ACTS_VERBOSE("Fitted parameters for track " << itrack);
+    //         ACTS_VERBOSE("  " << track.parameters().transpose());
+    //     } else {
+    //         ACTS_DEBUG("No fitted parameters for track " << itrack);
+    //     }
+    // } else {
+    //     ACTS_WARNING("Fit failed for track "
+    //                  << itrack << " with error: " << result.error() << ", "
+    //                  << result.error().message());
+    // }
+//}
+
 
 
 }
