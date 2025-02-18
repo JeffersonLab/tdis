@@ -59,8 +59,8 @@ add_executable(tdis
         tracking/RefittingCalibrator.cpp
         tracking/BuildMtpcDetector.hpp
         tracking/BuildMtpcDetectorCG.cpp
-        tracking/BuildMtpcDetectorGEM.cpp
-        tracking/BuildMtpcDetectorGEM.hpp
+        #tracking/BuildMtpcDetectorGEM.cpp
+        #tracking/BuildMtpcDetectorGEM.hpp
 
 )
 

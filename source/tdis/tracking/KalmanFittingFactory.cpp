@@ -92,36 +92,36 @@ void tdis::tracking::KalmanFittingFactory::Execute(int32_t runNumber, uint64_t e
     auto pSurface = Acts::Surface::makeShared<Acts::PerigeeSurface>(
         Acts::Vector3{0., 0., 0.});
 
-    // Type erased calibrator for the measurements
-    std::shared_ptr<ActsExamples::MeasurementCalibrator> calibrator;
-
-    double bz = 1.5 * Acts::UnitConstants::T;
-
-    auto field = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0.0, 0.0, bz));
-
-
-    // Construct the MagneticFieldContext using the cache
-    Acts::MagneticFieldContext magFieldContext;
-    // Create a cache for the magnetic field
-    //Acts::ConstantBField::Cache magFieldCache = field->makeCache(magFieldContext);
-    Acts::CalibrationContext calibrationContext;
-
-    ActsExamples::TrackFitterFunction::GeneralFitterOptions options{
-        m_serviceGeometry->GetActsGeometryContext(),
-        magFieldContext, calibrationContext, pSurface.get(),
-        Acts::PropagatorPlainOptions(m_serviceGeometry->GetActsGeometryContext(), magFieldContext)};
-
-    auto trackContainer = std::make_shared<Acts::VectorTrackContainer>();
-    auto trackStateContainer = std::make_shared<Acts::VectorMultiTrajectory>();
-    Acts::TrackContainer tracks(trackContainer, trackStateContainer);
-
-    // Perform the fit for each input track
-    std::vector<Acts::SourceLink> trackSourceLinks;
-
-    for (auto track: *m_parameters_input()) {
-        track.
-
-    }
+    // // Type erased calibrator for the measurements
+    // std::shared_ptr<ActsExamples::MeasurementCalibrator> calibrator;
+    //
+    // double bz = 1.5 * Acts::UnitConstants::T;
+    //
+    // auto field = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0.0, 0.0, bz));
+    //
+    //
+    // // Construct the MagneticFieldContext using the cache
+    // Acts::MagneticFieldContext magFieldContext;
+    // // Create a cache for the magnetic field
+    // //Acts::ConstantBField::Cache magFieldCache = field->makeCache(magFieldContext);
+    // Acts::CalibrationContext calibrationContext;
+    //
+    // ActsExamples::TrackFitterFunction::GeneralFitterOptions options{
+    //     m_serviceGeometry->GetActsGeometryContext(),
+    //     magFieldContext, calibrationContext, pSurface.get(),
+    //     Acts::PropagatorPlainOptions(m_serviceGeometry->GetActsGeometryContext(), magFieldContext)};
+    //
+    // auto trackContainer = std::make_shared<Acts::VectorTrackContainer>();
+    // auto trackStateContainer = std::make_shared<Acts::VectorMultiTrajectory>();
+    // Acts::TrackContainer tracks(trackContainer, trackStateContainer);
+    //
+    // // Perform the fit for each input track
+    // std::vector<Acts::SourceLink> trackSourceLinks;
+    //
+    // for (auto track: *m_parameters_input()) {
+    //     track.
+    //
+    // }
 
     // // Clear & reserve the right size
     // trackSourceLinks.clear();

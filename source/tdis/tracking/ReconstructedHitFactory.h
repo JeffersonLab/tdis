@@ -149,6 +149,7 @@ namespace tdis::tracking {
                 meas2D.covariance({cov(0, 0), cov(1, 1), hit.timeError() * hit.timeError(), cov(0, 1)});  // Covariance on location and time
                 meas2D.addweights(1.0);          // Weight for each of the hits, mirrors hits array
                 meas2D.addhits(hit);
+
             }
             m_tracker_hits_out() = std::move(rec_hits);
             m_measurements_out() = std::move(measurements);
