@@ -2,60 +2,60 @@
 
 #include <JANA/Components/JOmniFactory.h>
 #include <JANA/JFactory.h>
-#include <spdlog/logger.h>
 
-#include <ActsExamples/EventData/Track.hpp>
-
-#include "ActsGeometryService.h"
-#include "podio_model/DigitizedMtpcMcHit.h"
-#include "podio_model/Measurement2D.h"
-#include "podio_model/TrackParameters.h"
 #include "services/LogService.hpp"
+#include "ActsGeometryService.h"
 
-namespace tdis::tracking {
+// PODIO input:
+#include "podio_model/DigitizedMtpcMcTrack.h"
+#include "podio_model/Measurement2D.h"
 
-    struct KalmanFittingFactory : public JOmniFactory<KalmanFittingFactory> {
-        PodioInput<edm4eic::TrackParameters> m_parameters_input {this};
-        PodioInput<edm4eic::Measurement2D> m_measurements_input {this};
-//        // Output<ActsExamples::Trajectories> m_acts_trajectories_output {this};
-        Output<ActsExamples::ConstTrackContainer> m_acts_tracks_output {this, "ConstTrackContainer"};
-//
-//        Parameter<std::vector<double>> m_etaBins {this, "EtaBins", {}, "Eta Bins for ACTS CKF tracking reco"};
-//        Parameter<std::vector<double>> m_chi2CutOff {this, "Chi2CutOff", {15.}, "Chi2 Cut Off for ACTS CKF tracking"};
-//        Parameter<std::vector<size_t>> m_numMeasurementsCutOff {this, "NumMeasurementsCutOff", {10}, "Number of measurements Cut Off for ACTS CKF tracking"};
-//
-//
-        Service<ActsGeometryService> m_serviceGeometry{this};
-        Service<services::LogService> m_service_log{this};
-//        Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true, "Use true hits xyz instead of digitized one"};
-//
-//
-//        // Construct a propagator using a constant magnetic field along z.
-        template <typename stepper_t>
-        auto makeConstantFieldPropagator(std::shared_ptr<const Acts::TrackingGeometry> geo, double bz);
+// PODIO output:
+// We will produce an ActsExamples::ConstTrackContainer (Acts vector tracks)
+#include <Acts/EventData/TrackContainer.hpp>
+#include <Acts/EventData/VectorMultiTrajectory.hpp>
+#include <Acts/EventData/VectorTrackContainer.hpp>
+#include <ActsExamples/EventData/Track.hpp> // for ActsExamples::ConstTrackContainer type
 
-        void Configure();
+namespace tdis {
+        namespace tracking {
 
-        void ChangeRun(int32_t runNumber) override {/*nothin here*/};
+                /// JANA2 factory which performs a simple Kalman fit using:
+                ///  - MC truth parameters as initial guesses,
+                ///  - 2D measurements for the hits,
+                ///  - Gains matrix-based Kalman filter in Acts.
+                struct KalmanFittingFactory : public JOmniFactory<KalmanFittingFactory> {
 
-        void Execute(int32_t runNumber, uint64_t evtNumber);
+                        /// Inputs (from your PODIO data model)
+                        PodioInput<tdis::DigitizedMtpcMcTrack> m_mc_tracks_in {
+                                this,
+                                {"DigitizedMtpcMcTrack"}
+                        };
 
-    private:
-        std::shared_ptr<spdlog::logger> m_log;
-        std::shared_ptr<const Acts::Logger> m_acts_logger{nullptr};
-//        // std::shared_ptr<CKFTrackingFunction> m_trackFinderFunc;
-//
-//
-        std::shared_ptr<Acts::TrackingGeometry> m_geometry{nullptr};
-//        Acts::GeometryContext m_geoctx;
-//        Acts::CalibrationContext m_calibctx;
-//        Acts::MagneticFieldContext m_fieldctx;
-//
-//        Acts::MeasurementSelector::Config m_sourcelinkSelectorCfg;
-//
-//        /// Private access to the logging instance
-//        const Acts::Logger& logger() const { return *m_acts_logger; }
+                        /// We will read the 2D measurements from your ReconstructedHitFactory
+                        PodioInput<edm4eic::Measurement2D> m_measurements_in {
+                                this,
+                                {"Measurement2D"}
+                        };
 
-    };
+                        /// Output: We produce a final Acts track container
+                        Output<ActsExamples::ConstTrackContainer> m_acts_tracks_out {
+                                this,
+                                "ConstTrackContainer"
+                            };
 
-}
+                        /// Services
+                        Service<services::LogService>        m_service_log {this};
+                        Service<tdis::tracking::ActsGeometryService> m_service_geo {this};
+
+                        /// JANA2 callbacks
+                        void Configure();
+                        void ChangeRun(int32_t runNumber) override;
+                        void Execute(int32_t runNumber, uint64_t eventNumber);
+
+                private:
+                        std::shared_ptr<spdlog::logger>      m_log;
+                };
+
+        } // end namespace tracking
+} // end namespace tdis
