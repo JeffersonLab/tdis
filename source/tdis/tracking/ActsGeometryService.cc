@@ -368,17 +368,23 @@ void tdis::tracking::ActsGeometryService::Init() {
 
 
     /// Return the telescope detector
-    gGeometry = tdis::tracking::buildOriginalDetector(
-            nominalContext,             // gctx is the detector element dependent geometry context
-            m_detector_elements,              // detectorStore is the store for the detector element
-            m_plane_positions,          // positions are the positions of different layers in the longitudinal direction
-            stereos,                    // stereoAngles are the stereo angles of different layers, which are rotation angles around the longitudinal (normal) direction
-            offsets,                    // is the offset (u, v) of the layers in the transverse plane
-            bounds,                     // bounds is the surface bound values, minR and maxR
-            thickness,                  // thickness is the material thickness of each layer
-            Acts::BinningValue::binZ);
+    // TODO remove it. This is from the old implementation
+    // gGeometry = tdis::tracking::buildCylindricalDetector(
+    //         nominalContext,             // gctx is the detector element dependent geometry context
+    //         m_detector_elements,        // detectorStore is the store for the detector element
+    //         m_plane_positions,          // positions are the positions of different layers in the longitudinal direction
+    //         stereos,                    // stereoAngles are the stereo angles of different layers, which are rotation angles around the longitudinal (normal) direction
+    //         offsets,                    // is the offset (u, v) of the layers in the transverse plane
+    //         bounds,                     // bounds is the surface bound values, minR and maxR
+    //         thickness,                  // thickness is the material thickness of each layer
+    //         Acts::BinningValue::binZ);
 
+    m_detector_elements.clear();
 
+    gGeometry = tdis::tracking::buildCylindricalDetector(
+        nominalContext,             // Geometry context
+        m_detector_elements         // Detector element store
+    );
 
 
     // Visualize ACTS geometry

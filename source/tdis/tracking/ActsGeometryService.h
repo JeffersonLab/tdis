@@ -39,10 +39,15 @@ namespace tdis::tracking {
                                                            const Acts::TrackingVolume& tVolume,
                                                            const Acts::GeometryContext& gctx);
 
-        /// Basically returns GEM plane information
+        /// Basically returns cylinder corresponding to ring
         std::shared_ptr<tdis::tracking::MtpcDetectorElement> GetDetectorElement(size_t index) const {
-            return m_detector_elements[index];
+            return m_detector_elements.at(index);
         }
+
+        std::shared_ptr<const Acts::TrackingGeometry> GetTrackingGeometry() const {
+            return gGeometry;
+        }
+
 
       private:
         Parameter<std::string> m_tgeo_file{this, "acts:geometry", "g4sbs_mtpc.root","TGeo filename with geometry for ACTS"};
@@ -67,7 +72,8 @@ namespace tdis::tracking {
 
         tdis::tracking::MtpcDetectorElement::ContextType nominalContext;
 
-        std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
+        // std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
+        std::unordered_map<uint32_t, std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
 
         std::shared_ptr<const Acts::TrackingGeometry> gGeometry;
 
@@ -98,5 +104,6 @@ namespace tdis::tracking {
             true,           // Write or not
             "tdis"          // Optional tag
         );
+
     }
 }   // namespace tdis::tracking

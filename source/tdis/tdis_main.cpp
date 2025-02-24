@@ -143,6 +143,7 @@ int main(int argc, char* argv[]) {
     // measurement_2d_generator->AddWiring("TrackerHitGenerator", {"TrackerHit"}, {"Measurement2D"});
     // app.Add(measurement_2d_generator);
 
+
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
     app.Add(new tdis::io::PodioWriteProcessor(&app));
 

@@ -4,6 +4,9 @@
 .DS_Store
 .idea/
 
+# Repomix output
+repomix-output.txt
+
 cmake-build-debug-docker-tdis/
 
 source/tdis/podio_model/

@@ -1,0 +1,10 @@
+# Add patterns to ignore here, one per line
+# Example:
+# *.log
+# tmp/
+.github/
+cmake-*/
+documentation/
+python/
+docker/
+tpc-tracking-display/

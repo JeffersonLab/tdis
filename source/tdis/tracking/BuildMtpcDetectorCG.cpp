@@ -74,8 +74,7 @@ buildCylindricalDetector(
     double radius = innerRadius + (i + 0.5) * radialStep;
 
     // Cylinder bounds
-    auto cylinderBounds =
-        std::make_shared<const CylinderBounds>(radius, halfLength);
+    auto cylinderBounds = std::make_shared<const CylinderBounds>(radius, halfLength);
 
     // Unique ID for the ring
     uint32_t id = static_cast<uint32_t>(i);
