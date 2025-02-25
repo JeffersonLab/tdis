@@ -382,6 +382,7 @@ void tdis::tracking::ActsGeometryService::Init() {
     m_detector_elements.clear();
 
     gGeometry = tdis::tracking::buildCylindricalDetector(
+        m_init_log,
         nominalContext,             // Geometry context
         m_detector_elements         // Detector element store
     );

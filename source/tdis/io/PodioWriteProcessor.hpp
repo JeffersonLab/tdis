@@ -59,6 +59,7 @@
 #include <thread>
 #include <vector>
 
+#include "podio_model/Track.h"
 #include "podio_model/TrackerHit.h"
 #include "services/LogService.hpp"
 
@@ -145,7 +146,7 @@ inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& ev
     std::lock_guard<std::mutex> lock(m_mutex);
     // auto hits = event->GetCollection<edm4eic::TrackerHit>("TrackerHit");
 
-    [[maybe_unused]] auto tracks = event->Get<ActsExamples::ConstTrackContainer>("ConstTrackContainer");
+    [[maybe_unused]] auto tracks = event->GetCollection<edm4eic::Track>("FittedTracks");
 
     m_log->info("PodioWriteProcessor::Process() All event collections:");
     auto event_collections = event->GetAllCollectionNames();

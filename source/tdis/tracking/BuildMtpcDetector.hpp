@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <spdlog/logger.h>
+
 #include <array>
 #include <memory>
 #include <vector>
@@ -31,6 +33,7 @@ namespace tdis::tracking {
  *  Then each cylinder correspond to MtpcDetectorElement in detectorStore
  */
 std::unique_ptr<const Acts::TrackingGeometry> buildCylindricalDetector(
+        std::shared_ptr<spdlog::logger> log,
         const typename MtpcDetectorElement::ContextType& gctx,
         std::unordered_map<uint32_t, std::shared_ptr<MtpcDetectorElement>>& surfaceStore);
 

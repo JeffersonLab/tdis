@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
     kalmanFitterGenerator->AddWiring(
         "KalmanFitterGenerator",
         {"DigitizedMtpcMcTrack", "DigitizedMtpcMcHit", "TrackerHit", "Measurement2D"},
-        {"ConstTrackContainer"});
+        {"FittedTrajectories", "FittedTrackParams", "FittedTracks"});
     app.Add(kalmanFitterGenerator);
 
     // auto measurement_2d_generator = new JOmniFactoryGeneratorT<tdis::tracking::Measurement2DFactory>();

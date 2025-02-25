@@ -92,10 +92,20 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         // Collect SourceLinks for this track's measurements
         std::vector<Acts::SourceLink> sourceLinks;
         for (const auto& mcHit : mcTrack.hits()) {
+            m_logger->info("Track id={} colId={}", mcTrack.id().index, mcTrack.id().collectionID);
             for (size_t i = 0; i < measurements.size(); ++i) {
-                const auto& meas = measurements[i];
-                if (!meas.hits().empty() && meas.hits().at(0).rawHit().id() == mcHit.id()) { // Compare ids
-                    auto surfaceId = meas.surface();
+                const auto& measurement = measurements[i];
+                if (!measurement.hits().empty() && measurement.hits().at(0).rawHit().id() == mcHit.id()) { // Compare ids
+
+                    auto x = (double)mcHit.truePosition().x;
+                    auto y = (double)mcHit.truePosition().y;
+                    auto z = (double)mcHit.truePosition().z;
+
+                    m_logger->info("    id={}-{}, plane={}, ring={}, pad={}, x={}, y={}, z={}",
+                        mcHit.id().collectionID, mcHit.id().index,
+                        mcHit.plane(), mcHit.ring(), mcHit.pad(),
+                        x, y, z);
+                    auto surfaceId = measurement.surface();
                     ActsExamples::IndexSourceLink sourceLink(surfaceId, i);
                     sourceLinks.emplace_back(sourceLink);
                     break;
