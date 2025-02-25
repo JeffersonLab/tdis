@@ -53,12 +53,14 @@ add_executable(tdis
         tracking/KalmanFittingFactory.cpp
         # tracking/CKFTracking.h
         # tracking/CKFTracking.cc
-        #tracking/TrackFitterFunction.hpp
-        tracking/KalmanFitterFunction.cpp
-        #tracking/RefittingCalibrator.hpp
-        #tracking/RefittingCalibrator.cpp
+        tracking/ConfiguredFitter.hpp
+        tracking/ConfiguredKalmanFitter.cpp
+        tracking/ConfiguredKalmanFitter.h
+        tracking/RefittingCalibrator.h
+        tracking/RefittingCalibrator.cpp
         tracking/BuildMtpcDetector.hpp
         tracking/BuildMtpcDetectorCG.cpp
+        tracking/ConfiguredKalmanFitter.h
         #tracking/BuildMtpcDetectorGEM.cpp
         #tracking/BuildMtpcDetectorGEM.hpp
 

@@ -6,12 +6,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#include "RefittingCalibrator.hpp"
+#include "RefittingCalibrator.h"
 
-#include "Acts/Definitions/Algebra.hpp"
-#include "Acts/EventData/MeasurementHelpers.hpp"
-#include "Acts/EventData/SourceLink.hpp"
-#include "Acts/Utilities/CalibrationContext.hpp"
+#include <Acts/Definitions/Algebra.hpp>
+#include <Acts/EventData/MeasurementHelpers.hpp>
+#include <Acts/EventData/SourceLink.hpp>
+#include <Acts/Utilities/CalibrationContext.hpp>
 
 namespace ActsExamples {
 

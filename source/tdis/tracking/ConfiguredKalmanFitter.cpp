@@ -1,11 +1,3 @@
-// This file is part of the ACTS project.
-//
-// Copyright (C) 2016 CERN for the benefit of the ACTS project
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -34,8 +26,8 @@
 #include "ActsExamples/EventData/IndexSourceLink.hpp"
 #include "ActsExamples/EventData/MeasurementCalibration.hpp"
 #include "ActsExamples/EventData/Track.hpp"
-#include "RefittingCalibrator.hpp"
-#include "TrackFitterFunction.hpp"
+#include "RefittingCalibrator.h"
+#include "ConfiguredFitter.hpp"
 
 namespace Acts {
     class MagneticFieldProvider;
@@ -65,7 +57,7 @@ namespace {
 
     using namespace ActsExamples;
 
-    struct KalmanFitterFunctionImpl final : public TrackFitterFunction {
+    struct ConfiguredKalmanFitter final : public ConfiguredFitter {
         Fitter fitter;
         DirectFitter directFitter;
 
@@ -79,7 +71,7 @@ namespace {
 
         IndexSourceLink::SurfaceAccessor slSurfaceAccessor;
 
-        KalmanFitterFunctionImpl(Fitter&& f, DirectFitter&& df, const Acts::TrackingGeometry& trkGeo):
+        ConfiguredKalmanFitter(Fitter&& f, DirectFitter&& df, const Acts::TrackingGeometry& trkGeo):
             fitter(std::move(f)),
             directFitter(std::move(df)),
             slSurfaceAccessor{trkGeo}
@@ -101,7 +93,8 @@ namespace {
                 options.magFieldContext,
                 options.calibrationContext,
                 extensions,
-                options.propOptions, &(*options.referenceSurface));
+                options.propOptions,
+                &(*options.referenceSurface));
 
             // Configure options
             kfOptions.referenceSurfaceStrategy = Acts::KalmanFitterTargetSurfaceStrategy::first;
@@ -113,8 +106,7 @@ namespace {
             if (options.doRefit) {
                 kfOptions.extensions.surfaceAccessor.connect<&RefittingCalibrator::accessSurface>();
             } else {
-                kfOptions.extensions.surfaceAccessor
-                    .connect<&IndexSourceLink::SurfaceAccessor::operator()>(&slSurfaceAccessor);
+                kfOptions.extensions.surfaceAccessor.connect<&IndexSourceLink::SurfaceAccessor::operator()>(&slSurfaceAccessor);
             }
 
             return kfOptions;
@@ -155,11 +147,14 @@ namespace {
 
 }  // namespace
 
-std::shared_ptr<ActsExamples::TrackFitterFunction> ActsExamples::makeKalmanFitterFunction(
+std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
-    std::shared_ptr<const Acts::MagneticFieldProvider> magneticField, bool multipleScattering,
+    std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
+    bool multipleScattering,
     bool energyLoss, double reverseFilteringMomThreshold,
-    Acts::FreeToBoundCorrection freeToBoundCorrection, const Acts::Logger& logger) {
+    Acts::FreeToBoundCorrection freeToBoundCorrection,
+    const Acts::Logger& logger)
+{
     // Stepper should be copied into the fitters
     const Stepper stepper(std::move(magneticField));
 
@@ -175,14 +170,11 @@ std::shared_ptr<ActsExamples::TrackFitterFunction> ActsExamples::makeKalmanFitte
 
     // Direct fitter
     Acts::DirectNavigator directNavigator{logger.cloneWithSuffix("DirectNavigator")};
-    DirectPropagator directPropagator(stepper, std::move(directNavigator),
-                                      logger.cloneWithSuffix("DirectPropagator"));
-    DirectFitter directTrackFitter(std::move(directPropagator),
-                                   logger.cloneWithSuffix("DirectFitter"));
+    DirectPropagator directPropagator(stepper, std::move(directNavigator), logger.cloneWithSuffix("DirectPropagator"));
+    DirectFitter directTrackFitter(std::move(directPropagator), logger.cloneWithSuffix("DirectFitter"));
 
     // build the fitter function. owns the fitter object.
-    auto fitterFunction = std::make_shared<KalmanFitterFunctionImpl>(
-        std::move(trackFitter), std::move(directTrackFitter), geo);
+    auto fitterFunction = std::make_shared<ConfiguredKalmanFitter>(std::move(trackFitter), std::move(directTrackFitter), geo);
     fitterFunction->multipleScattering = multipleScattering;
     fitterFunction->energyLoss = energyLoss;
     fitterFunction->reverseFilteringLogic.momentumThreshold = reverseFilteringMomThreshold;

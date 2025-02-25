@@ -1,36 +1,30 @@
-// This file is part of the ACTS project.
-//
-// Copyright (C) 2016 CERN for the benefit of the ACTS project
-//
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-
 #pragma once
 
-#include "Acts/EventData/SourceLink.hpp"
-#include "Acts/EventData/TrackParameters.hpp"
-#include "Acts/EventData/VectorMultiTrajectory.hpp"
-#include "Acts/EventData/VectorTrackContainer.hpp"
-#include "Acts/Geometry/GeometryContext.hpp"
-#include "Acts/Geometry/TrackingGeometry.hpp"
-#include "Acts/MagneticField/MagneticFieldContext.hpp"
-#include "Acts/MagneticField/MagneticFieldProvider.hpp"
-#include "Acts/Propagator/Propagator.hpp"
-#include "Acts/TrackFitting/BetheHeitlerApprox.hpp"
-#include "Acts/TrackFitting/GsfOptions.hpp"
-#include "Acts/Utilities/CalibrationContext.hpp"
-#include "ActsExamples/EventData/Measurement.hpp"
-#include "ActsExamples/EventData/MeasurementCalibration.hpp"
-#include "ActsExamples/EventData/Track.hpp"
-#include "RefittingCalibrator.hpp"
+#include <functional>
+
+#include <Acts/EventData/SourceLink.hpp>
+#include <Acts/EventData/TrackParameters.hpp>
+#include <Acts/EventData/VectorMultiTrajectory.hpp>
+#include <Acts/EventData/VectorTrackContainer.hpp>
+#include <Acts/Geometry/GeometryContext.hpp>
+#include <Acts/Geometry/TrackingGeometry.hpp>
+#include <Acts/MagneticField/MagneticFieldContext.hpp>
+#include <Acts/MagneticField/MagneticFieldProvider.hpp>
+#include <Acts/Propagator/Propagator.hpp>
+#include <Acts/TrackFitting/BetheHeitlerApprox.hpp>
+#include <Acts/TrackFitting/GsfOptions.hpp>
+#include <Acts/Utilities/CalibrationContext.hpp>
+#include <ActsExamples/EventData/Measurement.hpp>
+#include <ActsExamples/EventData/MeasurementCalibration.hpp>
+#include <ActsExamples/EventData/Track.hpp>
+#include "RefittingCalibrator.h"
 
 namespace ActsExamples {
 
 /// Fit function that takes the above parameters and runs a fit
 /// @note This is separated into a virtual interface to keep compilation units
 /// small.
-class TrackFitterFunction {
+class ConfiguredFitter {
  public:
   using TrackFitterResult = Acts::Result<TrackContainer::TrackProxy>;
 
@@ -43,7 +37,7 @@ class TrackFitterFunction {
     bool doRefit = false;
   };
 
-  virtual ~TrackFitterFunction() = default;
+  virtual ~ConfiguredFitter() = default;
 
   virtual TrackFitterResult operator()(const std::vector<Acts::SourceLink>&,
                                        const TrackParameters&,
@@ -61,7 +55,7 @@ class TrackFitterFunction {
 
 /// Makes a fitter function object for the Kalman Filter
 ///
-std::shared_ptr<TrackFitterFunction> makeKalmanFitterFunction(
+std::shared_ptr<ConfiguredFitter> makeKalmanFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
     bool multipleScattering = true,
@@ -90,7 +84,7 @@ enum class MixtureReductionAlgorithm { weightCut, KLDistance };
 /// @param mixtureReductionAlgorithm How to reduce the number of components
 /// in a mixture
 /// @param logger a logger instance
-std::shared_ptr<TrackFitterFunction> makeGsfFitterFunction(
+std::shared_ptr<ConfiguredFitter> makeGsfFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
     BetheHeitlerApprox betheHeitlerApprox, std::size_t maxComponents,
@@ -108,7 +102,7 @@ std::shared_ptr<TrackFitterFunction> makeGsfFitterFunction(
 /// @param nUpdateMax max number of iterations during the fit
 /// @param relChi2changeCutOff Check for convergence (abort condition). Set to 0 to skip.
 /// @param logger a logger instance
-std::shared_ptr<TrackFitterFunction> makeGlobalChiSquareFitterFunction(
+std::shared_ptr<ConfiguredFitter> makeGlobalChiSquareFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
     bool multipleScattering = true, bool energyLoss = true,
