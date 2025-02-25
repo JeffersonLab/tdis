@@ -55,6 +55,12 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     // KalmanFitter extensions with default components
     Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> extensions;
 
+    // Add the surface accessor using the tracking geometry
+    extensions.surfaceAccessor.connect([this](const Acts::SourceLink& sourceLink) {
+        const auto& indexSourceLink = sourceLink.get<ActsExamples::IndexSourceLink>();
+        return m_acts_geo_svc().GetDetectorCylinder(indexSourceLink.geometryId());
+    });
+
     // KalmanFitter options
     Acts::KalmanFitterOptions kfOptions(
         geoContext,
@@ -106,7 +112,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
                         mcHit.plane(), mcHit.ring(), mcHit.pad(),
                         x, y, z);
                     auto surfaceId = measurement.surface();
-                    ActsExamples::IndexSourceLink sourceLink(surfaceId, i);
+                    ActsExamples::IndexSourceLink sourceLink(mcHit.ring(), i);
                     sourceLinks.emplace_back(sourceLink);
                     break;
                 }

@@ -64,10 +64,12 @@ class TrackFitterFunction {
 std::shared_ptr<TrackFitterFunction> makeKalmanFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
-    bool multipleScattering = true, bool energyLoss = true,
+    bool multipleScattering = true,
+    bool energyLoss = true,
     double reverseFilteringMomThreshold = 0.0,
     Acts::FreeToBoundCorrection freeToBoundCorrection = Acts::FreeToBoundCorrection(),
-    const Acts::Logger& logger = *Acts::getDefaultLogger("Kalman", Acts::Logging::INFO));
+    const Acts::Logger& logger = *Acts::getDefaultLogger("Kalman", Acts::Logging::INFO)
+);
 
 /// This type is used in the Examples framework for the Bethe-Heitler
 /// approximation
