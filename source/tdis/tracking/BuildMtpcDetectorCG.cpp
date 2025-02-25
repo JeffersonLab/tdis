@@ -119,6 +119,9 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         // Extract the cylinder surface from the element
         auto cylinderSurface = detElem->surface().getSharedPtr();
 
+        auto setGeoId = cylinderSurface->geometryId();
+        std::cout<<setGeoId<<std::endl;
+
         // Create a single-surface SurfaceArray
         // For multiple surfaces, you'd push them into a vector,
         // but here we only have one per ring
@@ -134,6 +137,8 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
             LayerType::active           // the layer is active
         );
 
+
+
         cylinderLayers.push_back(std::move(cylinderLayer));
     }
 
@@ -147,7 +152,7 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         cylinderLayers,       // vector of shared_ptr<const Layer>
         innerRadius,          // min radius
         outerRadius,          // max radius
-        BinningType::equidistant,
+        BinningType::equidistant,       // (!) That is super important if end of one volume is beginning of the next
         BinningValue::binR
     );
 

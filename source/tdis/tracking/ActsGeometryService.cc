@@ -379,12 +379,12 @@ void tdis::tracking::ActsGeometryService::Init() {
     //         thickness,                  // thickness is the material thickness of each layer
     //         Acts::BinningValue::binZ);
 
-    m_detector_elements.clear();
+    m_detector_cylinders.clear();
 
     gGeometry = tdis::tracking::buildCylindricalDetector(
         m_init_log,
         nominalContext,             // Geometry context
-        m_detector_elements         // Detector element store
+        m_detector_cylinders     // Detector element store
     );
 
 

@@ -11,7 +11,7 @@ namespace tdis::tracking {
 
 
     MtpcDetectorElement::MtpcDetectorElement(
-        uint32_t planeId,
+        uint32_t ringId,
         std::shared_ptr<const Acts::Transform3> transform,
         std::shared_ptr<const Acts::CylinderBounds> cBounds,
         double thickness,
@@ -19,11 +19,13 @@ namespace tdis::tracking {
          : m_elementTransform(std::move(transform)),
            m_elementThickness(thickness),
            m_elementCylinderBounds(std::move(cBounds)),
-
-          m_id(planeId)
+           m_id(ringId)
     {
         // Create the cylinder surface
         m_elementSurface = Acts::Surface::makeShared<Acts::CylinderSurface>(m_elementCylinderBounds, *this);
+        const auto geoId = Acts::GeometryIdentifier(ringId);
+
+        m_elementSurface->assignGeometryId(geoId);
 
         if (material) {
             m_elementSurface->assignSurfaceMaterial(material);

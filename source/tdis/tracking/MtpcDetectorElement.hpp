@@ -28,13 +28,13 @@ namespace tdis::tracking {
 
         /// Constructor for detector element bound to a Cylinder Surface
         ///
-        /// @param planeId is the unique identifier for the detector element
+        /// @param ringId is the unique identifier for the detector element
         /// @param transform is the transform that places the element in 3D space
         /// @param cBounds are the cylinder bounds for the detector element
         /// @param thickness is the module thickness
         /// @param material is the (optional) Surface material associated with it
         MtpcDetectorElement(
-            uint32_t planeId,
+            uint32_t ringId,
             std::shared_ptr<const Acts::Transform3> transform,
             std::shared_ptr<const Acts::CylinderBounds> cBounds,
             double thickness,

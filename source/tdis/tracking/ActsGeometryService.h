@@ -40,8 +40,8 @@ namespace tdis::tracking {
                                                            const Acts::GeometryContext& gctx);
 
         /// Basically returns cylinder corresponding to ring
-        std::shared_ptr<tdis::tracking::MtpcDetectorElement> GetDetectorElement(size_t index) const {
-            return m_detector_elements.at(index);
+        std::shared_ptr<tdis::tracking::MtpcDetectorElement> GetDetectorCylinder(size_t index) const {
+            return m_detector_cylinders.at(index);
         }
 
         std::shared_ptr<const Acts::TrackingGeometry> GetTrackingGeometry() const {
@@ -73,7 +73,7 @@ namespace tdis::tracking {
         tdis::tracking::MtpcDetectorElement::ContextType nominalContext;
 
         // std::vector<std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
-        std::unordered_map<uint32_t, std::shared_ptr<tdis::tracking::MtpcDetectorElement>> m_detector_elements;
+        std::unordered_map<uint32_t, std::shared_ptr<MtpcDetectorElement>> m_detector_cylinders;
 
         std::shared_ptr<const Acts::TrackingGeometry> gGeometry;
 
