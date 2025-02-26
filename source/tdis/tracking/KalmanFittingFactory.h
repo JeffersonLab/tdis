@@ -1,32 +1,31 @@
 #pragma once
 
 #include <JANA/Components/JOmniFactory.h>
+
 #include <Acts/EventData/TrackContainer.hpp>
-#include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/EventData/VectorMultiTrajectory.hpp>
-#include <Acts/TrackFitting/KalmanFitter.hpp>
-#include <Acts/Propagator/Navigator.hpp>
-#include <Acts/Propagator/EigenStepper.hpp>
+#include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/MagneticField/ConstantBField.hpp>
+#include <Acts/Propagator/EigenStepper.hpp>
+#include <Acts/Propagator/Navigator.hpp>
 #include <Acts/Surfaces/PerigeeSurface.hpp>
+#include <Acts/TrackFitting/KalmanFitter.hpp>
 #include <ActsExamples/EventData/Track.hpp>
 
 #include "ActsGeometryService.h"
-#include "services/LogService.hpp"
-#include "podio_model/DigitizedMtpcMcTrack.h"
-#include "podio_model/Measurement2D.h"
-#include "podio_model/Track.h"
-#include "podio_model/Trajectory.h"
+#include "ConfiguredFitter.hpp"
+#include "podio_model/DigitizedMtpcMcHitCollection.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
-#include <JANA/Components/JOmniFactory.h>
-#include "podio_model/DigitizedMtpcMcTrack.h"
-#include "podio_model/DigitizedMtpcMcHitCollection.h"
-#include "podio_model/TrackerHitCollection.h"
+#include "podio_model/Measurement2D.h"
 #include "podio_model/Measurement2DCollection.h"
-#include "podio_model/TrajectoryCollection.h"
-#include "podio_model/TrackParametersCollection.h"
+#include "podio_model/Track.h"
 #include "podio_model/TrackCollection.h"
+#include "podio_model/TrackParametersCollection.h"
+#include "podio_model/TrackerHitCollection.h"
+#include "podio_model/Trajectory.h"
+#include "podio_model/TrajectoryCollection.h"
+#include "services/LogService.hpp"
 
 namespace tdis::tracking {
 
@@ -46,6 +45,7 @@ namespace tdis::tracking {
         Service<ActsGeometryService> m_acts_geo_svc{this};
         Service<services::LogService> m_log_svc{this};
         Parameter<double> m_bz{this, "bz", 1.5, "Magnetic field in Z (Tesla)"};
+        std::shared_ptr<ActsExamples::ConfiguredFitter> m_fitter ;
 
         KalmanFittingFactory();
         void Configure();

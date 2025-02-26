@@ -53,7 +53,7 @@ add_executable(tdis
         tracking/KalmanFittingFactory.cpp
         # tracking/CKFTracking.h
         # tracking/CKFTracking.cc
-        tracking/ConfiguredFitter.hpp
+        # tracking/ConfiguredFitter.hpp
         tracking/ConfiguredKalmanFitter.cpp
         tracking/ConfiguredKalmanFitter.h
         tracking/RefittingCalibrator.h
@@ -61,6 +61,9 @@ add_executable(tdis
         tracking/BuildMtpcDetector.hpp
         tracking/BuildMtpcDetectorCG.cpp
         tracking/ConfiguredKalmanFitter.h
+        # tracking/MeasurementCalibration.cpp
+        # tracking/MeasurementCalibration.h
+
         #tracking/BuildMtpcDetectorGEM.cpp
         #tracking/BuildMtpcDetectorGEM.hpp
 
@@ -73,23 +76,6 @@ find_package(spdlog REQUIRED)
 find_package(Boost REQUIRED)
 find_package(ROOT COMPONENTS Core RIO Hist Graf Gpad Tree Postscript Matrix Physics MathCore)
 find_package(Acts REQUIRED COMPONENTS Core PluginTGeo PluginJson)
-
-target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
-target_link_libraries(tdis
-        ${JANA_LIB}
-        stdc++fs
-        ROOT::RIO ROOT::Core
-        podio::podio podio::podioRootIO podio_model_lib podio_model_dict
-        spdlog::spdlog
-        fmt::fmt
-        CLI11::CLI11
-        Boost::boost
-        ActsCore ActsPluginTGeo ActsPluginJson
-)
-
-set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
-target_include_directories(tdis PRIVATE "podio_model")
-target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
 
 # ----------- Configure ACTS ExamplesLibrary --------
 # ExamplesLibrary actually creates ACTS event model
@@ -122,6 +108,30 @@ if(EXISTS "${Acts_HOME_INCLUDE}")
 else()
     message(STATUS "Directory does not exist or is not accessible: ${Acts_HOME_INCLUDE}. It is OK if ACTS is installed in /")
 endif()
+
+target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
+target_link_libraries(tdis
+        ${JANA_LIB}
+        stdc++fs
+        ROOT::RIO ROOT::Core
+        podio::podio podio::podioRootIO podio_model_lib podio_model_dict
+        spdlog::spdlog
+        fmt::fmt
+        CLI11::CLI11
+        Boost::boost
+        ActsCore
+        ActsPluginTGeo
+        ActsPluginJson
+        ${ActsExamples_LIB}
+        #/container/app/acts/acts-v37.4.0/lib/libActsExamplesFramework.so
+        # ${ActsCore_PATH}/libActsExamplesFramework.so
+)
+
+set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+target_include_directories(tdis PRIVATE "podio_model")
+target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
+
+
 
 target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
 

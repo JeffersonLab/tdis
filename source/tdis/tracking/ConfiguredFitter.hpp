@@ -14,8 +14,9 @@
 #include <Acts/TrackFitting/BetheHeitlerApprox.hpp>
 #include <Acts/TrackFitting/GsfOptions.hpp>
 #include <Acts/Utilities/CalibrationContext.hpp>
-#include <ActsExamples/EventData/Measurement.hpp>
 #include <ActsExamples/EventData/MeasurementCalibration.hpp>
+#include <ActsExamples/EventData/Measurement.hpp>
+
 #include <ActsExamples/EventData/Track.hpp>
 #include "RefittingCalibrator.h"
 
@@ -42,7 +43,7 @@ class ConfiguredFitter {
   virtual TrackFitterResult operator()(const std::vector<Acts::SourceLink>&,
                                        const TrackParameters&,
                                        const GeneralFitterOptions&,
-                                       const MeasurementCalibratorAdapter&,
+                                       const ActsExamples::MeasurementCalibratorAdapter&,
                                        TrackContainer&) const = 0;
 
   virtual TrackFitterResult operator()(const std::vector<Acts::SourceLink>&,

@@ -29,12 +29,7 @@
 #include "RefittingCalibrator.h"
 #include "ConfiguredFitter.hpp"
 
-namespace Acts {
-    class MagneticFieldProvider;
-    class SourceLink;
-    class Surface;
-    class TrackingGeometry;
-}  // namespace Acts
+
 
 namespace {
 
@@ -115,7 +110,7 @@ namespace {
         TrackFitterResult operator()(const std::vector<Acts::SourceLink>& sourceLinks,
                                      const TrackParameters& initialParameters,
                                      const GeneralFitterOptions& options,
-                                     const MeasurementCalibratorAdapter& calibrator,
+                                     const ActsExamples::MeasurementCalibratorAdapter& calibrator,
                                      TrackContainer& tracks) const override
         {
             const auto kfOptions = makeKfOptions(options, calibrator);
@@ -155,6 +150,8 @@ std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFu
     Acts::FreeToBoundCorrection freeToBoundCorrection,
     const Acts::Logger& logger)
 {
+
+
     // Stepper should be copied into the fitters
     const Stepper stepper(std::move(magneticField));
 
@@ -164,7 +161,9 @@ std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFu
     cfg.resolvePassive = false;
     cfg.resolveMaterial = true;
     cfg.resolveSensitive = true;
+
     Acts::Navigator navigator(cfg, logger.cloneWithSuffix("Navigator"));
+
     Propagator propagator(stepper, std::move(navigator), logger.cloneWithSuffix("Propagator"));
     Fitter trackFitter(std::move(propagator), logger.cloneWithSuffix("Fitter"));
 

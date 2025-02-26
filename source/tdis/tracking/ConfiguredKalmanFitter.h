@@ -28,7 +28,7 @@
 #include "RefittingCalibrator.h"
 #include "ConfiguredFitter.hpp"
 namespace ActsExamples {
-class MeasurementCalibratorAdapter;
+class MeasurementCalibration;
 
 /**
  * @brief Create a specialized track-fitter configuration with a KalmanFitter
@@ -59,14 +59,14 @@ struct ConfiguredKalmanFitter final : public ConfiguredFitter
   ~ConfiguredKalmanFitter() override = default;
 
   // Overridden from ConfiguredTrackFitter
-  Acts::Result<std::vector<ActsExamples::TrackContainer::TrackProxy>>
+    TrackFitterResult
   operator()(const std::vector<Acts::SourceLink>& sourceLinks,
              const ActsExamples::TrackParameters& initialParameters,
              const GeneralFitterOptions& options,
              const ActsExamples::MeasurementCalibratorAdapter& calibrator,
              ActsExamples::TrackContainer& tracks) const override;
 
-  Acts::Result<std::vector<ActsExamples::TrackContainer::TrackProxy>>
+    TrackFitterResult
   operator()(const std::vector<Acts::SourceLink>& sourceLinks,
              const ActsExamples::TrackParameters& initialParameters,
              const GeneralFitterOptions& options,
@@ -88,7 +88,7 @@ struct ConfiguredKalmanFitter final : public ConfiguredFitter
  *
  * @return A shared_ptr to a ConfiguredTrackFitter that uses the Acts KalmanFitter
  */
-std::shared_ptr<ConfiguredTrackFitter> makeKalmanFitterFunction(
+std::shared_ptr<ConfiguredFitter> makeKalmanFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
     bool multipleScattering,

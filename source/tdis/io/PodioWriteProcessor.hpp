@@ -80,7 +80,7 @@ public:
         "TrackerHit",
         "Measurement2D",
         "TruthTrackInitParameters",
-        "ConstTrackContainer"
+        "FittedTrajectories", "FittedTrackParams", "FittedTracks"
     };
 
   PodioWriteProcessor(JApplication * app);

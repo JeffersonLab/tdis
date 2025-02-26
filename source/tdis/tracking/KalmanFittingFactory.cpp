@@ -1,14 +1,16 @@
 #include "KalmanFittingFactory.h"
+
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Utilities/Helpers.hpp>
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 
+#include "ConfiguredKalmanFitter.h"
+#include "podio_model/DigitizedMtpcMcTrack.h"
+#include "podio_model/DigitizedMtpcMcTrackCollection.h"
 #include "podio_model/Measurement2DCollection.h"
 #include "podio_model/TrackCollection.h"
 #include "podio_model/TrackParametersCollection.h"
 #include "podio_model/TrajectoryCollection.h"
-#include "podio_model/DigitizedMtpcMcTrack.h"
-#include "podio_model/DigitizedMtpcMcTrackCollection.h"
 
 namespace tdis::tracking {
 
@@ -32,11 +34,24 @@ void KalmanFittingFactory::Configure() {
 
     m_logger = m_log_svc->logger("tracking/kf");
     // TODO connect spdlog with ACTS logger m_acts_logger = Acts::getDefaultLogger("KF", Acts::Logging::INFO, &m_logger->sinks());
-    m_acts_logger = Acts::getDefaultLogger("KF", Acts::Logging::INFO);
+    m_acts_logger = Acts::getDefaultLogger("KF", Acts::Logging::VERBOSE);
+
+
+    m_fitter = ActsExamples::makeKalmanFitterFunction(
+        m_acts_geo_svc->GetTrackingGeometry(),
+        magneticField,
+        true, // multipleScattering
+        true, // energyLoss
+        0.0, // reverseFilteringMomThreshold
+        Acts::FreeToBoundCorrection(), // FreeToBoundCorrection
+        *m_acts_logger   // logger
+    );
 }
 
 void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
+
+    auto geometry = m_acts_geo_svc->GetTrackingGeometry();
 
     // Retrieve input data
     const auto& mcTracks = *m_mc_tracks_input();
@@ -46,6 +61,16 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
     Acts::MagneticFieldContext magContext;
     Acts::CalibrationContext calibContext;
+
+    ActsExamples::ConfiguredFitter::GeneralFitterOptions general_fitter_options = {
+        .geoContext = geoContext,
+        .magFieldContext = magContext,
+        .calibrationContext = calibContext,
+        .propOptions = Acts::PropagatorPlainOptions(geoContext, magContext)
+
+    };
+
+    // ActsExamples::PassThroughCalibrator calibrator;
 
     // Prepare output containers
     auto trackContainer = std::make_shared<Acts::VectorTrackContainer>();
@@ -67,13 +92,14 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         true        // Energy loss
     );
 
+
     // Process each MC track
     for (const auto& mcTrack : mcTracks) {
         // Convert truth parameters to initial parameters
         const double p = mcTrack.momentum() * 1_GeV;
         const double theta = mcTrack.theta() * Acts::UnitConstants::degree;
         const double phi = mcTrack.phi() * Acts::UnitConstants::degree;
-        const double vz = mcTrack.vertexZ() * 1_m;
+        const double vz = mcTrack.vertexZ();
 
         // Create initial parameters at perigee
         auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
@@ -89,10 +115,22 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
             Acts::ParticleHypothesis::proton()
         );
 
+        m_logger->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
+               p / Acts::UnitConstants::GeV, theta / Acts::UnitConstants::degree,
+               phi / Acts::UnitConstants::degree, vz);
+
+        // create sourcelink and measurement containers
+        auto actsMeasurements = std::make_shared<ActsExamples::MeasurementContainer>();
+
+
+
         // Collect SourceLinks for this track's measurements
         std::vector<Acts::SourceLink> sourceLinks;
+        m_logger->info("Track id={} colId={} Hits:", mcTrack.id().index, mcTrack.id().collectionID);
         for (const auto& mcHit : mcTrack.hits()) {
-            m_logger->info("Track id={} colId={}", mcTrack.id().index, mcTrack.id().collectionID);
+
+            track_start_
+
             for (size_t i = 0; i < measurements.size(); ++i) {
                 const auto& measurement = measurements[i];
                 if (!measurement.hits().empty() && measurement.hits().at(0).rawHit().id() == mcHit.id()) { // Compare ids
@@ -101,15 +139,47 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
                     auto y = (double)mcHit.truePosition().y;
                     auto z = (double)mcHit.truePosition().z;
 
-                    m_logger->info("    id={}-{}, plane={}, ring={}, pad={}, x={}, y={}, z={}",
+                    m_logger->info("    id={}-{}, plane={}, ring={}, pad={}, x={}, y={}, z={}, surf-id={}",
                         mcHit.id().collectionID, mcHit.id().index,
                         mcHit.plane(), mcHit.ring(), mcHit.pad(),
-                        x, y, z);
-                    auto surfaceId = measurement.surface();
-                    ActsExamples::IndexSourceLink sourceLink(mcHit.ring(), i);
+                        x, y, z, measurement.surface());
+
+                    // This is a test that surfaces we think we have, are in tracking geometry
+                    auto surfaceFromTrkGeo = geometry->findSurface(Acts::GeometryIdentifier(measurement.surface()));
+                    auto surfaceGeoId = surfaceFromTrkGeo->geometryId();
+                    if (!surfaceFromTrkGeo) {
+                        auto msg = fmt::format("For ring = {}, we can't find back the surface with id = {}. It is trackingGeometry->findSurface==NULL. Track fitting will fail soon (!)", mcHit.ring(), surfaceGeoId.volume());
+                        m_logger->critical(msg);
+                        throw std::runtime_error(msg);
+                    }
+
+                    ActsExamples::IndexSourceLink sourceLink(surfaceGeoId, i);
+
                     sourceLinks.emplace_back(sourceLink);
+
+
+                    // 1) Prepare the data vector (size=2)
+                    Acts::Vector2 loc2D = Acts::Vector2::Zero();
+                    loc2D[Acts::eBoundLoc0] = measurement.loc().a;
+                    loc2D[Acts::eBoundLoc1] = measurement.loc().b;
+
+                    // 2) Prepare the 2x2 covariance
+                    Acts::SquareMatrix2 cov2D = Acts::SquareMatrix2::Zero();
+                    cov2D(0, 0) = measurement.covariance().xx;
+                    cov2D(1, 1) = measurement.covariance().yy;
+                    cov2D(0, 1) = measurement.covariance().xy;
+                    cov2D(1, 0) = measurement.covariance().xy;
+
+                    //auto actsMeasurement = actsMeasurements->makeMeasurement<Acts::eBoundSize>(geoId);
+
+                    actsMeasurements->emplaceMeasurement<2>(
+                        surfaceGeoId,
+                        std::array{Acts::eBoundLoc0, Acts::eBoundLoc1},  // Subspace indices FIRST
+                        loc2D,                                    // Parameters vector
+                        cov2D                                     // Covariance matrix
+                    );
                     break;
-                }
+                 }
             }
         }
 
@@ -118,14 +188,23 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
             continue;
         }
 
+        ActsExamples::PassThroughCalibrator pcalibrator;
+        ActsExamples::MeasurementCalibratorAdapter calibrator(pcalibrator, *actsMeasurements);
+
         // Run Kalman fit
-        auto result = m_kalman_fitter->fit(
-            sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
-        );
+        //auto result = m_kalman_fitter->fit(
+        //            sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
+        //);
+        auto result = (*m_fitter)(sourceLinks,
+            startParams,
+            general_fitter_options,
+            calibrator,
+            tracks);
 
         if (!result.ok()) {
             m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
         }
+        // TODO we should end here
     }
 
     // Store results

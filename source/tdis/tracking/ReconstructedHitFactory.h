@@ -248,7 +248,7 @@ namespace tdis::tracking {
                 // Create a new measurement2D
                 auto meas2D = measurements->create();
 
-                meas2D.surface(ring);
+                meas2D.surface(surfaceRef.geometryId().value());
                 meas2D.loc({static_cast<float>(loc[0]), static_cast<float>(loc[1])});
                 meas2D.time(hit.time());
 

@@ -138,7 +138,6 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         );
 
 
-
         cylinderLayers.push_back(std::move(cylinderLayer));
     }
 
@@ -178,9 +177,25 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         "TPCVolume"
     );
 
+
     // Finally, create the TrackingGeometry with this single volume as the world
     auto trackingGeometry = std::make_unique<TrackingGeometry>(trackingVolume);
 
+
+    // (!) This is not only debugging output, but also is a test that:
+    // Surfaces we think we have, are the same as surfaces in tracking geometry.
+    log->info("Surface IDs in detector elements:");
+    for (const auto& pair : surfaceStore) {
+        auto ringId = pair.first;
+        auto surfaceGeoId = pair.second->surface().geometryId();
+        auto surfaceFromTrkGeo = trackingGeometry->findSurface(surfaceGeoId);
+        if (!surfaceFromTrkGeo) {
+            log->critical("For ring = {}, we can't find back the surface with id = {}. It is trackingGeometry->findSurface==NULL. Track fitting will fail soon (!)", ringId, surfaceGeoId.volume());
+            continue;
+        }
+
+        log->info("   ring: {} => Surface ID: {}", ringId, surfaceFromTrkGeo->geometryId().value());
+    }
     log->info("Done building cylindrical mTPC geometry. Returning TrackingGeometry.");
     return trackingGeometry;
 }
