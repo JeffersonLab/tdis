@@ -95,49 +95,38 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
 
     // Process each MC track
     for (const auto& mcTrack : mcTracks) {
-        // Convert truth parameters to initial parameters
-        const double p = mcTrack.momentum() * 1_GeV;
-        const double theta = mcTrack.theta() * Acts::UnitConstants::degree;
-        const double phi = mcTrack.phi() * Acts::UnitConstants::degree;
-        const double vz = mcTrack.vertexZ();
-
-        // Create initial parameters at perigee
-        auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-            Acts::Vector3(0, 0, vz)
-        );
-        Acts::BoundVector params = Acts::BoundVector::Zero();
-        params[Acts::eBoundPhi] = phi;
-        params[Acts::eBoundTheta] = theta;
-        params[Acts::eBoundQOverP] = 1.0 / p;
-
-        Acts::BoundTrackParameters startParams(
-            perigee, params, Acts::BoundMatrix::Identity(),
-            Acts::ParticleHypothesis::proton()
-        );
-
-        m_logger->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
-               p / Acts::UnitConstants::GeV, theta / Acts::UnitConstants::degree,
-               phi / Acts::UnitConstants::degree, vz);
 
         // create sourcelink and measurement containers
         auto actsMeasurements = std::make_shared<ActsExamples::MeasurementContainer>();
 
-
+        int track_start_ring = 999999999;
+        double track_start_x = 0;
+        double track_start_y = 0;
+        double track_start_z = 0;
 
         // Collect SourceLinks for this track's measurements
         std::vector<Acts::SourceLink> sourceLinks;
         m_logger->info("Track id={} colId={} Hits:", mcTrack.id().index, mcTrack.id().collectionID);
         for (const auto& mcHit : mcTrack.hits()) {
-
-            track_start_
-
             for (size_t i = 0; i < measurements.size(); ++i) {
                 const auto& measurement = measurements[i];
                 if (!measurement.hits().empty() && measurement.hits().at(0).rawHit().id() == mcHit.id()) { // Compare ids
 
+
                     auto x = (double)mcHit.truePosition().x;
                     auto y = (double)mcHit.truePosition().y;
                     auto z = (double)mcHit.truePosition().z;
+
+                    auto reconstructedHit = measurement.hits().at(0);
+
+
+                    if (mcHit.ring() < track_start_ring) {
+
+                        track_start_x = reconstructedHit.position().x;
+                        track_start_y = reconstructedHit.position().y;
+                        track_start_z = reconstructedHit.position().z;
+                        track_start_ring = mcHit.ring();
+                    }
 
                     m_logger->info("    id={}-{}, plane={}, ring={}, pad={}, x={}, y={}, z={}, surf-id={}",
                         mcHit.id().collectionID, mcHit.id().index,
@@ -183,10 +172,36 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
             }
         }
 
+
         if (sourceLinks.empty()) {
             m_logger->warn("Track {} has no measurements", mcTrack.id().index);
             continue;
         }
+
+        // Convert truth parameters to initial parameters
+        const double p = mcTrack.momentum() * 1_GeV;
+        const double theta = mcTrack.theta() * Acts::UnitConstants::degree;
+        const double phi = mcTrack.phi() * Acts::UnitConstants::degree;
+        const double vz = mcTrack.vertexZ();
+
+        // Create initial parameters at perigee
+        auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+            Acts::Vector3(track_start_x, track_start_y, track_start_z)
+        );
+        Acts::BoundVector params = Acts::BoundVector::Zero();
+        params[Acts::eBoundPhi] = phi;
+        params[Acts::eBoundTheta] = theta;
+        params[Acts::eBoundQOverP] = 1.0 / p;
+
+        Acts::BoundTrackParameters startParams(
+            perigee, params, Acts::BoundMatrix::Identity(),
+            Acts::ParticleHypothesis::proton()
+        );
+
+        m_logger->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
+               p / Acts::UnitConstants::GeV, theta / Acts::UnitConstants::degree,
+               phi / Acts::UnitConstants::degree, vz);
+
 
         ActsExamples::PassThroughCalibrator pcalibrator;
         ActsExamples::MeasurementCalibratorAdapter calibrator(pcalibrator, *actsMeasurements);
@@ -195,11 +210,19 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         //auto result = m_kalman_fitter->fit(
         //            sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
         //);
-        auto result = (*m_fitter)(sourceLinks,
-            startParams,
-            general_fitter_options,
-            calibrator,
-            tracks);
+        // 7) Run the Kalman fit => result
+        auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
+        if (!result.ok()) {
+            m_logger->error("Fit failed for track {}: {}", mcTrack.id().index,
+                            result.error().message());
+            continue;
+        } else {
+            // If you want to do anything with the resulting track proxy right now,
+            // you can retrieve it (but it's already in 'tracks'):
+            auto& trackProxy = result.value();
+            m_logger->debug("Successfully fitted track => track p {} in container",
+                            trackProxy.absoluteMomentum());
+        }
 
         if (!result.ok()) {
             m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
