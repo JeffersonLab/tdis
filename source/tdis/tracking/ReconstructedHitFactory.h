@@ -77,6 +77,7 @@ namespace tdis::tracking {
                 const int pad   = mc_hit.pad();
                 const double z_to_gem = mc_hit.zToGem();
 
+                if (pad == -999) break;
                 // Convert ring+pad to (x,y)
                 auto [pad_x, pad_y] = getPadCenter(ring, pad);
                 double plane_z = plane_positions[plane];
