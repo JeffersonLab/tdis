@@ -37,7 +37,7 @@ void RefittingCalibrator::calibrate(const Acts::GeometryContext& /*gctx*/,
         sl.state.template calibratedCovariance<Size>();
   });
 
-  trackState.setBoundSubspaceIndices(sl.state.boundSubspaceIndices());
+  // TODO 41 trackState.setBoundSubspaceIndicses(sl.state.boundSubspaceIndices());
 }
 
 }  // namespace ActsExamples

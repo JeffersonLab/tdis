@@ -1,0 +1,3 @@
+include pip_readme.md
+recursive-include edpm/ *.py
+include edpm/templates/*.edpm.yaml

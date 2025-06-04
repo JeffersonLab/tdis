@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run TDIS",
+      "type": "shell",
+      "command": "${workspaceFolder}/build/tdis",
+      "args": [
+        "-pnthreads=1",
+        "-pjana:nevents=10000",
+        "-pjana:timeout=0",
+        "-ppodio:output_file=/mnt/data/test_output_v01.root",
+        "-pppodio:print_collections=TrackerHit",
+        "-pacts:geometry=/mnt/data/g4sbs_mtpc.root",
+        "-pacts:round_tgeo_values=0",
+        "-pacts:output_obj=/mnt/data/acts_geom.obj",
+        "-pacts:output_ply=/mnt/data/acts_geom.ply",
+        "-ptracking:hit_reco:log_level=trace",
+        "/mnt/data/g4sbsout_EPCEvents_200000.txt"
+      ],
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

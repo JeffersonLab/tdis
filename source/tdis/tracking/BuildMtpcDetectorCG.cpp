@@ -152,7 +152,7 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         innerRadius,          // min radius
         outerRadius,          // max radius
         BinningType::equidistant,       // (!) That is super important if end of one volume is beginning of the next
-        BinningValue::binR
+        AxisDirection::AxisR
     );
 
     //

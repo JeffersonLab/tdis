@@ -1,0 +1,46 @@
+[project]
+name = "pytdis"
+dynamic = ["version"]
+description = "mTPC analysis"
+readme = { file = "pip_readme.md", content-type = "text/markdown" }
+dependencies = [
+    "click",
+    "numpy",
+    "pandas",
+
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+]
+license = "MIT"
+authors = [
+    { name = "Dmitry Romanov", email = "romanov@jlab.org" },
+]
+
+[project.urls]
+Homepage = "https://github.com/JeffersonLab/tdis"
+
+[project.scripts]
+pytdis = "pytdis.cli:pytdis_cli"
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "build",
+    "twine",
+    "keyrings.alt"
+]
+
+[build-system]
+requires = ["setuptools>=66.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+[tool.setuptools.packages.find]
+include = ["pytdis"]
+
+[tool.setuptools.dynamic]
+version = { attr = "pytdis.version.version" }

@@ -1,0 +1,47 @@
+{
+  // Visible name in VS Code
+  "name": "TDIS Dev",
+
+  // Use the pre-built image that already contains ACTS, podio, JANA, etc.
+  "image": "eicdev/tdis-pre:latest",
+
+  // Where VS Code will put the checkout inside the container
+  "workspaceFolder": "/workspace",
+
+  // Bind-mount a local “data” folder to /mnt/data inside the container
+  "mounts": [
+    "source=${localWorkspaceFolder}/data,target=/mnt/data,type=bind,consistency=cached"
+  ],
+
+  // Extra docker flags (delete if you do not need GPU access)
+  //"runArgs": ["--gpus", "all"],
+
+  /* ---------- VS Code configuration ---------- */
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",          // CMake UX
+        "twxs.cmake",                     // CMake syntax
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        // Tell CMake Tools where to put the build directory
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        // Default generator (the image already has Ninja)
+        "cmake.generator": "Ninja",
+        // Export compile_commands.json for clangd
+        "cmake.configureSettings": {
+          "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        }
+      }
+    }
+  },
+
+  /* ---------- Lifecycle hooks ---------- */
+  "postCreateCommand": [
+    // Configure & build once right after the container is first created
+    "cmake -S . -B build",
+    "cmake --build build -j $(nproc)"
+  ]
+}

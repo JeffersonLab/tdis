@@ -19,10 +19,17 @@ include(FetchContent)
 FetchContent_Declare(
         CLI11
         GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-        GIT_TAG        v2.4.2  # Use the latest stable release
+        GIT_TAG        v2.5.0
 )
 FetchContent_MakeAvailable(CLI11)
 
+
+FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG        v1.15.3
+)
+FetchContent_MakeAvailable(spdlog)
 
 # --------- GENERATE PODIO --------------
 find_package(podio REQUIRED)
