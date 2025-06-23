@@ -14,14 +14,3 @@ from pytdis.io import (
     parse_event_data,
 )
 
-__all__ = [
-    # Version info
-    "version",
-    "__version__",
-    "version_tuple",
-    # IO functions
-    "read_tdis_data_numpy",
-    "read_tdis_data_pandas",
-    "get_track_summary",
-    "parse_event_data",
-]

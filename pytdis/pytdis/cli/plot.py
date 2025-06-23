@@ -32,3 +32,5 @@ def plot_command(filename, events, skip, output, format):
         if output:
             click.echo(f"Would save plot to: {output}")
         click.echo(f"Output format: {format}")
+    else:
+        click.echo("No filename provided")
