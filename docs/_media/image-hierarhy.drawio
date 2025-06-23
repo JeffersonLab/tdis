@@ -1,0 +1,31 @@
+<mxfile host="drawio-plugin" modified="2024-11-05T16:59:31.793Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" etag="tG4DZmVknYUngngJULgM" version="22.1.22" type="embed">
+  <diagram id="SZMAlSkkSlNbT5CupUWZ" name="Page-1">
+    <mxGraphModel dx="1837" dy="1546" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="JwNkbS7Js9nHBYe9srT3-3" value="eicdev/tdis-pre" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;fillColor=#e1d5e7;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry width="450" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="2" value="Dependencies such as: Root, PodIO, JANA2, etc." style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="JwNkbS7Js9nHBYe9srT3-3">
+          <mxGeometry y="30" width="450" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="JwNkbS7Js9nHBYe9srT3-5" value="eicdev/tdis" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;fillColor=#d5e8d4;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="40" y="80" width="450" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="JwNkbS7Js9nHBYe9srT3-6" value="Compiled and ready to use tdis executable" style="align=center;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;fontColor=#6E6E6E;" parent="JwNkbS7Js9nHBYe9srT3-5" vertex="1">
+          <mxGeometry y="30" width="450" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="JwNkbS7Js9nHBYe9srT3-19" value="" style="endArrow=classic;html=1;strokeWidth=3;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.046;entryY=1.061;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" edge="1" target="2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="110" as="sourcePoint" />
+            <mxPoint x="10" y="80" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="20" y="110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

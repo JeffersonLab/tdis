@@ -7,7 +7,7 @@ in both NumPy array and Pandas DataFrame formats.
 
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List, Dict, Iterator
 
 
 def parse_event_data(lines: List[str], event_num: int) -> Tuple[np.ndarray, List[np.ndarray]]:
@@ -27,6 +27,8 @@ def parse_event_data(lines: List[str], event_num: int) -> Tuple[np.ndarray, List
         Array of shape (4,) containing [momentum, theta, phi, z_vertex]
     hits : List[np.ndarray]
         List of hit arrays, each of shape (9,) containing hit data
+        [time, adc, true_x, true_y, true_z, ring, pad, plane, z_to_gem]
+        where ring, pad, plane are integers
 
     Raises
     ------
@@ -50,10 +52,77 @@ def parse_event_data(lines: List[str], event_num: int) -> Tuple[np.ndarray, List
         if len(hit_parts) != 9:
             raise ValueError(f"Event {event_num}, Hit {i}: Expected 9 hit parameters, got {len(hit_parts)}")
 
-        hit_data = np.array([float(x) for x in hit_parts])
+        # Convert to appropriate types
+        # Fields: time, adc, true_x, true_y, true_z, ring, pad, plane, z_to_gem
+        hit_data = np.array([
+            float(hit_parts[0]),  # time
+            float(hit_parts[1]),  # adc
+            float(hit_parts[2]),  # true_x
+            float(hit_parts[3]),  # true_y
+            float(hit_parts[4]),  # true_z
+            int(hit_parts[5]),    # ring (integer)
+            int(hit_parts[6]),    # pad (integer)
+            int(hit_parts[7]),    # plane (integer)
+            float(hit_parts[8])   # z_to_gem
+        ])
         hits.append(hit_data)
 
     return track_info, hits
+
+
+def _read_events_iterator(filename: str,
+                          skip_events: int = 0) -> Iterator[Tuple[int, np.ndarray, List[np.ndarray]]]:
+    """
+    Internal generator function that yields parsed events from a file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the data file
+    skip_events : int
+        Number of events to skip from the beginning
+
+    Yields
+    ------
+    track_id : int
+        Sequential track ID starting from 0
+    track_info : np.ndarray
+        Track information array
+    hits : List[np.ndarray]
+        List of hit arrays for this track
+    """
+    with open(filename, 'r') as f:
+        event_count = 0
+        track_id = 0
+        current_event_lines = []
+        in_event = False
+
+        for line in f:
+            # Check if this is an event marker
+            if line.strip().startswith("Event"):
+                # Process previous event if exists
+                if in_event and current_event_lines:
+                    if event_count >= skip_events:
+                        try:
+                            track_info, hits = parse_event_data(current_event_lines, event_count)
+                            yield track_id, track_info, hits
+                            track_id += 1
+                        except ValueError as e:
+                            print(f"Warning: {e}")
+
+                event_count += 1
+                current_event_lines = []
+                in_event = True
+            elif in_event and line.strip():
+                current_event_lines.append(line)
+
+        # Process last event if exists
+        if in_event and current_event_lines and event_count >= skip_events:
+            try:
+                track_info, hits = parse_event_data(current_event_lines, event_count)
+                yield track_id, track_info, hits
+            except ValueError as e:
+                print(f"Warning: {e}")
 
 
 def read_tdis_data_numpy(filename: str,
@@ -83,54 +152,25 @@ def read_tdis_data_numpy(filename: str,
     """
     tracks_list = []
     hits_list = []
+    events_read = 0
 
-    with open(filename, 'r') as f:
-        event_count = 0
-        events_read = 0
-        current_event_lines = []
-        in_event = False
+    # Use the iterator to read events
+    for track_id, track_info, hits in _read_events_iterator(filename, skip_events):
+        if n_events is not None and events_read >= n_events:
+            break
 
-        for line in f:
-            # Check if this is an event marker
-            if line.strip().startswith("Event"):
-                # Process previous event if exists
-                if in_event and current_event_lines:
-                    if event_count >= skip_events:
-                        if n_events is None or events_read < n_events:
-                            try:
-                                track_info, hits = parse_event_data(current_event_lines, event_count)
-                                tracks_list.append(track_info)
-                                hits_list.append(hits)
-                                events_read += 1
-                            except ValueError as e:
-                                print(f"Warning: {e}")
-                        else:
-                            break
-
-                event_count += 1
-                current_event_lines = []
-                in_event = True
-            elif in_event and line.strip():
-                current_event_lines.append(line)
-
-        # Process last event if exists
-        if in_event and current_event_lines and event_count >= skip_events:
-            if n_events is None or events_read < n_events:
-                try:
-                    track_info, hits = parse_event_data(current_event_lines, event_count)
-                    tracks_list.append(track_info)
-                    hits_list.append(hits)
-                except ValueError as e:
-                    print(f"Warning: {e}")
+        tracks_list.append(track_info)
+        hits_list.append(hits)
+        events_read += 1
 
     # Convert to numpy arrays
-    tracks = np.array(tracks_list)
+    tracks = np.array(tracks_list) if tracks_list else np.array([]).reshape(0, 4)
 
     # Create 3D array for hits with padding
-    max_hits = max(len(h) for h in hits_list) if hits_list else 0
-    n_tracks = len(hits_list)
+    if hits_list:
+        max_hits = max(len(h) for h in hits_list)
+        n_tracks = len(hits_list)
 
-    if n_tracks > 0 and max_hits > 0:
         hits_array = np.full((n_tracks, max_hits, 9), np.nan)
         for i, event_hits in enumerate(hits_list):
             n_hits = len(event_hits)
@@ -165,86 +205,35 @@ def read_tdis_data_pandas(filename: str,
         Hit columns: time, adc, true_x, true_y, true_z, ring, pad, plane, z_to_gem
     """
     data_records = []
+    events_read = 0
 
-    with open(filename, 'r') as f:
-        event_count = 0
-        events_read = 0
-        current_event_lines = []
-        in_event = False
-        track_id = 0
+    # Use the iterator to read events
+    for track_id, track_info, hits in _read_events_iterator(filename, skip_events):
+        if n_events is not None and events_read >= n_events:
+            break
 
-        for line in f:
-            # Check if this is an event marker
-            if line.strip().startswith("Event"):
-                # Process previous event if exists
-                if in_event and current_event_lines:
-                    if event_count >= skip_events:
-                        if n_events is None or events_read < n_events:
-                            try:
-                                track_info, hits = parse_event_data(current_event_lines, event_count)
+        # Add records for this track
+        for hit_id, hit in enumerate(hits):
+            record = {
+                'track_id': track_id,
+                'hit_id': hit_id,
+                'momentum': track_info[0],
+                'theta': track_info[1],
+                'phi': track_info[2],
+                'z_vertex': track_info[3],
+                'time': hit[0],
+                'adc': hit[1],
+                'true_x': hit[2],
+                'true_y': hit[3],
+                'true_z': hit[4],
+                'ring': int(hit[5]),     # Ensure integer
+                'pad': int(hit[6]),      # Ensure integer
+                'plane': int(hit[7]),    # Ensure integer
+                'z_to_gem': hit[8]
+            }
+            data_records.append(record)
 
-                                # Add records for this track
-                                for hit_id, hit in enumerate(hits):
-                                    record = {
-                                        'track_id': track_id,
-                                        'hit_id': hit_id,
-                                        'momentum': track_info[0],
-                                        'theta': track_info[1],
-                                        'phi': track_info[2],
-                                        'z_vertex': track_info[3],
-                                        'time': hit[0],
-                                        'adc': hit[1],
-                                        'true_x': hit[2],
-                                        'true_y': hit[3],
-                                        'true_z': hit[4],
-                                        'ring': int(hit[5]),
-                                        'pad': int(hit[6]),
-                                        'plane': int(hit[7]),
-                                        'z_to_gem': hit[8]
-                                    }
-                                    data_records.append(record)
-
-                                track_id += 1
-                                events_read += 1
-                            except ValueError as e:
-                                print(f"Warning: {e}")
-                        else:
-                            break
-
-                event_count += 1
-                current_event_lines = []
-                in_event = True
-            elif in_event and line.strip():
-                current_event_lines.append(line)
-
-        # Process last event if exists
-        if in_event and current_event_lines and event_count >= skip_events:
-            if n_events is None or events_read < n_events:
-                try:
-                    track_info, hits = parse_event_data(current_event_lines, event_count)
-
-                    # Add records for this track
-                    for hit_id, hit in enumerate(hits):
-                        record = {
-                            'track_id': track_id,
-                            'hit_id': hit_id,
-                            'momentum': track_info[0],
-                            'theta': track_info[1],
-                            'phi': track_info[2],
-                            'z_vertex': track_info[3],
-                            'time': hit[0],
-                            'adc': hit[1],
-                            'true_x': hit[2],
-                            'true_y': hit[3],
-                            'true_z': hit[4],
-                            'ring': int(hit[5]),
-                            'pad': int(hit[6]),
-                            'plane': int(hit[7]),
-                            'z_to_gem': hit[8]
-                        }
-                        data_records.append(record)
-                except ValueError as e:
-                    print(f"Warning: {e}")
+        events_read += 1
 
     # Create DataFrame
     df = pd.DataFrame(data_records)

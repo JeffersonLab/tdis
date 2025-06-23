@@ -2,22 +2,25 @@
 
 ## Overview
 
-The containers are for docker but singularity can work with docker containers (see below).
+The containers are for docker/podman but singularity can work with docker containers (see below).
 
 - [Docker Hub](https://hub.docker.com/u/eicdev)
+- [Using containers at JLab](https://pages.jlab.org/scicomp/software/jlab-container-docs/)
 
 ### Images structure:
 
-![hierarchy](docs/_media/image-hierarhy.svg)
+![hierarchy](_media/image-hierarhy.svg)
 
 
 - **eicdev/tdis-pre** - have all compiling/debugging/testing environment and dependent packages such as ROOT, JANA2, Podio, etc.
-  The image is to be used for development, automation, etc.  
+  The image is to be used for development, automation, etc.
 - **eicdev/tdis** - Has tdis repo compiled and tdis command ready for use on farms, etc
 
 
 
 ## Run in docker
+
+(for ifarm docker is substituded by podman. The commands should be the same though)
 
 Containers are available at eicweb namespace at
 [the dockerhub](https://hub.docker.com/u/eicweb)
@@ -52,7 +55,7 @@ specified image, and then starts it using the specified command. If `--rm` flag 
 a stopped container can be restarted with all its previous changes intact using `docker start` command.
 Docker works somehow like tmux or screen - you can reconnect to the running container,
 attach many bash shells and even if container is stopped you can start it again and reconnect.
-This makes debugging easier, and you retain all your data. But `--rm` flag good for repeatability, tutorials and 
+This makes debugging easier, and you retain all your data. But `--rm` flag good for repeatability, tutorials and
 saving the disk space because of forgotten and never removed containers, etc..
 
 **Related docker documentation:**

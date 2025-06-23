@@ -1,0 +1,2 @@
+[console_scripts]
+pytdis = pytdis.cli:pytdis_cli
