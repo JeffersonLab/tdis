@@ -1,12 +1,9 @@
 # TDIS Package Installation Guide
 
-## Overview
-`tdis` is a CMake + C++ based package for multi-TPC chamber 
-tracking reconstruction based ACTS and JANA-2 under the hood. 
+["Containers" documentation to setup environment and run](containers.md)
+
 This page covers the installation process for the `tdis` package.
-
 The installation is standard for CMake packages. 
-
 
 ## Prerequisites
 
@@ -78,7 +75,29 @@ This will install:
 - `tdis` executable to `<install_prefix>/bin/`
 - `podio_model_lib` library to `<install_prefix>/lib/`
 
-## Docker Usage
+## Run
+
+To run
+
+```bash
+tdis
+-pnthreads=1
+-pjana:nevents=10
+-ppodio:output_file=/mnt/data/test_output_v01.root
+-pacts:geometry=/mnt/data/g4sbs_mtpc.root
+-pacts:round_tgeo_values=0
+-pacts:output_obj=/mnt/data/acts_geom.obj
+-pacts:output_ply=/mnt/data/acts_geom.ply
+-ptracking:hit_reco:log_level=trace
+/mnt/data/g4sbsout_EPCEvents_200000.txt
+```
+
+To print specific collection before the output
+```bash 
+-ppodio:print_collections=TrackerHit
+```
+
+### Docker Usage
 While this guide covers manual installation, TDIS is commonly run using Docker containers. When building custom Docker images, ensure all required dependencies are installed before building TDIS.
 
 ## Build Options
