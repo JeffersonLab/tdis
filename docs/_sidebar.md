@@ -2,7 +2,8 @@
 - [Overview](index.md "TDIS: ACTS tracking")
 - [Containers](containers.md)
 - [Installation](install.md)
-- [Concepts](concepts.md)
+- [Architecture](architecture.md)
+- [Resources](resources.md)
 - [Development](development/development.md)
 - [GitHub](https://github.com/JeffersonLab/tdis ':target=_blank')
 

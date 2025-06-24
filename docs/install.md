@@ -1,62 +1,113 @@
+# TDIS Package Installation Guide
+
+## Overview
+`tdis` is a CMake + C++ based package for multi-TPC chamber 
+tracking reconstruction based ACTS and JANA-2 under the hood. 
+This page covers the installation process for the `tdis` package.
+
+The installation is standard for CMake packages. 
 
 
-### Building JANA
+## Prerequisites
 
-First, set your `$JANA_HOME` environment variable. This is where the executables, libraries, headers, and plugins
-get installed. (It is also where we will clone the source). CMake will install to `$JANA_HOME` if it is set (it
-will install to `${CMAKE_BINARY_DIR}/install` if not). Be aware that although CMake usually defaults
-`CMAKE_INSTALL_PREFIX` to `/usr/local`, we have disabled this because we rarely want this in practice, and we
-don't want the build system picking up outdated headers and libraries we installed to `/usr/local` by accident.
-If you want to set `JANA_HOME=/usr/local`, you are free to do so, but you must do so deliberately.
+### Build Requirements
+- **CMake**: Version 3.24 or higher
+- **C++ Compiler**: Supporting C++20 standard
+- **Git**: For fetching dependencies
 
-Next, set your build directory. This is where CMake's caches, logs, intermediate build artifacts, etc go. The convention
-is to name it `build` and put it in the project's root directory. If you are using CLion, it will automatically create 
-a `cmake-build-debug` directory which works just fine. 
+### Required Dependencies
+The following packages must be installed before building `tdis`. 
+We can use [eicdev/tdis-pre container](containers.md) with preinstalled
+requirements. At least this container was designed for it. 
 
-Finally, you can cd into your build directory and build and install everything the usual CMake way.
+1. **JANA** - Jefferson Lab's multi-threaded framework
+2. **podio** - Event data model library
+3. **fmt** - String formatting library
+4. **Boost** - C++ libraries
+5. **ROOT** - CERN Data analysis framework
+6. **Acts** - A Common Tracking Software with components:
+    - Core
+    - PluginTGeo
+    - PluginJson
+    - ActsExamplesFramework library
 
+### Automatically Fetched Dependencies
+The following dependencies are automatically downloaded during the build process:
+- **CLI11** - Command line parser
+- **spdlog** - Fast C++ logging library
+
+## Installation Steps
+
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/JeffersonLab/JANA2
-
-cd JANA2
-mkdir build                                         # Create build dir
-cmake -S . -B build -DCMAKE_INSTALL_PREFIX=`pwd`    # Generate make scripts
-cmake --build build --target install -j 8           # Build and install (using 8 threads)
-
-source ${JANA_HOME}/bin/jana-this.sh                # Set PATH (and other envars)
-jana -Pplugins=JTest                                # Run JTest plugin to verify successful install
+git clone https://github.com/JeffersonLab/tdis
+cd tdis
 ```
 
-Note: If you want to use a compiler other than the default one on your system, it is not enough to modify your
-`$PATH`, as CMake ignores this by design. You either need to set the `CXX` environment variable or the 
-`CMAKE_CXX_COMPILER` CMake variable.
-
-By default, JANA will look for plugins under `$JANA_HOME/plugins`. For your plugins to propagate here, you have to `install`
-them. If you don't want to do that, you can also set the environment variable `$JANA_PLUGIN_PATH` to point to the build
-directory of your project. JANA will report where exactly it went looking for your plugins and what happened when it tried
-to load them if you set the JANA config `jana:debug_plugin_loading=1`.
-
+### 2. Configure with CMake
 ```bash
-jana -Pplugins=JTest -Pjana:debug_plugin_loading=1
+# You must create a build directory.
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/path/to/install ..
 ```
 
-### Using JANA in a CMake project
+For custom configurations, you can specify other flags like:
+```bash
+cmake -DCMAKE_INSTALL_PREFIX=/path/to/install \
+      -DCMAKE_CXX_STANDARD=23 \
+      -DCMAKE_BUILD_TYPE=Release \
+      ..
+```
 
-To use JANA in a CMake project, simply add `$JANA_HOME/lib/cmake/JANA` to your `CMAKE_PREFIX_PATH`,
-or alternatively, set the CMake variable `JANA_DIR=$JANA_HOME/lib/cmake/JANA`.
+### 4. Build
+```bash
+make -j$(nproc)
+```
+Or specify the number of parallel jobs:
+```bash
+make -j8
+```
 
-### Using JANA in a non-CMake project
+### 5. Install
+```bash
+make install
+```
 
-To use JANA in a non-CMake project:
-1. Source `$JANA_HOME/bin/jana-this.sh` to set the environment variables needed for JANA's dependencies
-2. Use `$JANA_HOME/bin/jana-config --cflags` to obtain JANA's compiler flags
-3. Use `$JANA_HOME/bin/jana_config --libs` to obtain JANA's linker flags
+This will install:
+- `tdis` executable to `<install_prefix>/bin/`
+- `podio_model_lib` library to `<install_prefix>/lib/`
 
+## Docker Usage
+While this guide covers manual installation, TDIS is commonly run using Docker containers. When building custom Docker images, ensure all required dependencies are installed before building TDIS.
 
-### Using non standard system compiler
+## Build Options
 
-CMake by design won't use `$PATH` to find the compiler. You either need to set the `CXX` environment variable or 
-the `CMAKE_CXX_COMPILER` CMake variable. 
+### Enable Tests (Optional)
+If Catch2 v3 is available, you can enable tests:
+```bash
+cmake -DWITH_TESTS=ON ..
+```
 
-Another option is use <a href="https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html" target="_blank">CMakePresets.json</a>,
-a file that has to be placed in CMake root directory and that may contain additional options. 
+## Troubleshooting
+
+### Acts Installation Path
+The build system automatically detects Acts installation. If Acts is installed in a non-standard location, ensure that:
+- `Acts_DIR` or `CMAKE_PREFIX_PATH` includes the Acts installation directory
+- ActsExamplesFramework library is available in the Acts lib directory
+
+### Missing Dependencies
+If CMake reports missing packages, ensure that:
+- Package `*_DIR` variables point to the correct installation paths
+- `CMAKE_PREFIX_PATH` includes all dependency installation directories
+
+Example:
+```bash
+cmake -DCMAKE_PREFIX_PATH="/path/to/jana;/path/to/acts;/path/to/podio" ..
+```
+
+## Verification
+After installation, verify the executable:
+```bash
+<install_prefix>/bin/tdis --help
+```
