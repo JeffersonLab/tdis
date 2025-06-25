@@ -1,9 +1,0 @@
-click
-numpy
-pandas
-
-[dev]
-pytest
-build
-twine
-keyrings.alt

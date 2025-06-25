@@ -35,7 +35,7 @@ def draw_detector_pads(ax, alpha=0.3):
         r_outer = FIRST_RING_INNER_RADIUS + (r + 1) * RING_WIDTH
 
         # Determine the angular offset for odd rings
-        if r % 2 == 0:
+        if (r+1) % 2 == 0:
             theta_offset = 0
         else:
             theta_offset = DELTA_THETA_DEG / 2

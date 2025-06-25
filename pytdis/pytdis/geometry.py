@@ -81,13 +81,13 @@ def get_pad_center(ring: int, pad: int) -> tuple[float, float]:
     r_center = RING_WIDTH * (ring + 0.5) + FIRST_RING_INNER_RADIUS
 
     # Determine the angular offset for odd rings
-    if ring % 2 == 0:
+    if (ring+1) % 2 == 0:
         theta_offset = 0  # Even rings
     else:
         theta_offset = DELTA_THETA / 2  # Odd rings
 
     # Compute the angular center of the pad
-    theta_center = DELTA_THETA / 2 + pad * DELTA_THETA + theta_offset
+    theta_center = DELTA_THETA / 2 + pad * DELTA_THETA - theta_offset
 
     # Convert from polar to Cartesian coordinates
     x = r_center * np.cos(theta_center)
