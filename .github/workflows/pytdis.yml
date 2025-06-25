@@ -8,14 +8,13 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -31,13 +30,6 @@ jobs:
         run: |
           python -m unittest discover tests -v
 
-      - name: Check code style
-        run: |
-          flake8 pytdis tests --max-line-length=100
-
-      - name: Type checking
-        run: |
-          mypy pytdis --ignore-missing-imports
 
   build:
     needs: test

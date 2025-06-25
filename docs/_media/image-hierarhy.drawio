@@ -7,13 +7,13 @@
         <mxCell id="JwNkbS7Js9nHBYe9srT3-3" value="eicdev/tdis-pre" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;fillColor=#5D7F99;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;strokeColor=#D0CEE2;fontColor=#1A1A1A;labelBackgroundColor=none;" parent="1" vertex="1">
           <mxGeometry x="-780" y="-2110" width="450" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="2" value="&lt;span&gt;Dependencies such as: Root, PodIO, JANA2, etc.&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;labelBackgroundColor=none;fontColor=light-dark(#2C2C2C,#BDBDBD);glass=0;rounded=0;" parent="JwNkbS7Js9nHBYe9srT3-3" vertex="1">
+        <mxCell id="2" value="&lt;span&gt;&lt;font style=&quot;color: rgb(111, 111, 111);&quot;&gt;Dependencies such as: Root, PodIO, JANA2, etc.&lt;/font&gt;&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;labelBackgroundColor=none;fontColor=light-dark(#2C2C2C,#BDBDBD);glass=0;rounded=0;" parent="JwNkbS7Js9nHBYe9srT3-3" vertex="1">
           <mxGeometry y="30" width="450" height="35" as="geometry" />
         </mxCell>
         <mxCell id="JwNkbS7Js9nHBYe9srT3-5" value="eicdev/tdis" style="swimlane;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;fillColor=#e1d5e7;rounded=1;fontSize=14;fontStyle=0;strokeWidth=2;resizeParent=0;resizeLast=1;shadow=0;dashed=0;align=center;strokeColor=#9673a6;labelBackgroundColor=none;fontColor=#313131;" parent="1" vertex="1">
           <mxGeometry x="-740" y="-2030" width="450" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="JwNkbS7Js9nHBYe9srT3-6" value="Compiled and ready to use tdis executable" style="align=center;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;fontColor=default;labelBackgroundColor=none;" parent="JwNkbS7Js9nHBYe9srT3-5" vertex="1">
+        <mxCell id="JwNkbS7Js9nHBYe9srT3-6" value="Compiled and ready to use tdis executable" style="align=center;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;verticalAlign=top;resizable=0;rotatable=0;part=1;fontColor=#818181;labelBackgroundColor=none;" parent="JwNkbS7Js9nHBYe9srT3-5" vertex="1">
           <mxGeometry y="30" width="450" height="30" as="geometry" />
         </mxCell>
         <mxCell id="JwNkbS7Js9nHBYe9srT3-19" value="" style="endArrow=classic;html=1;strokeWidth=3;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.046;entryY=1.061;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;strokeColor=#736CA8;fontColor=default;" parent="1" target="2" edge="1">

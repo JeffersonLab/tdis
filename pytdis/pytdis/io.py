@@ -10,7 +10,7 @@ import pandas as pd
 from typing import Tuple, Optional, List, Dict, Iterator
 
 
-def parse_event_data(lines: List[str], event_num: int) -> Tuple[np.ndarray, List[np.ndarray]]:
+def  parse_event_data(lines: List[str], event_num: int) -> Tuple[np.ndarray, List[np.ndarray]]:
     """
     Parse a single event from the data lines.
 
