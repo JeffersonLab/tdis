@@ -43,10 +43,12 @@ After `ls /tdis` you should see in container the content of CUE `/work/halla/tdi
 
 Now you can follow [install](install.md) page with software installation instructions.
 
-**(!!!) use `/work/halla/tdis/<username>` directory for YOUR work (!!!)**
 
+## Build 
 
-Lets combine it with building
+**(!!!) use your username `/work/halla/tdis/<username>` directory for YOUR work (!!!)**
+
+Lets build `tdis` software in container
 
 ```bash
 podman run --rm  -it -v /work/halla/tdis/<username>:/tdis eicdev/tdis-pre:latest bash
