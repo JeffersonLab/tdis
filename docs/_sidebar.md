@@ -6,5 +6,6 @@
 - [Implementation](implementation.md)
 - [Resources](resources.md)
 - [Development](development/development.md)
-- [GitHub](https://github.com/JeffersonLab/tdis ':target=_blank')
+- [IFarm Tutorial](ifarm-tutorial.md)
+- [GitHub↗](https://github.com/JeffersonLab/tdis ':target=_blank')
 
