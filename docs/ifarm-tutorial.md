@@ -41,7 +41,28 @@ ls /tdis
 
 After `ls /tdis` you should see in container the content of CUE `/work/halla/tdis`
 
-Now you can follow [isntall](install.md) page with software installation instructions. 
+Now you can follow [install](install.md) page with software installation instructions.
+
+**(!!!) use `/work/halla/tdis/<username>` directory for YOUR work (!!!)**
+
+
+Lets combine it with building
+
+```bash
+podman run --rm  -it -v /work/halla/tdis/<username>:/tdis eicdev/tdis-pre:latest bash
+
+# Go to directory shared between the host and the container:
+cd /tdis
+
+# Clone TDIS software
+git clone https://github.com/JeffersonLab/tdis
+cd tdis
+
+# Build cmake project
+mkdir build && cd build
+cmake ..
+make -j8 && make install
+```
 
 
 ## Troubleshooting
