@@ -56,7 +56,7 @@ Now you can follow [install](install.md) page with software installation instruc
 
 ## Build software
 
-**(!!!) use your username `/work/halla/tdis/<username>` directory for YOUR work (!!!)**
+**(!!!) use your username `/work/halla/tdis/<username>` directory for your work (!!!)**
 
 Lets build `tdis` software in container
 
