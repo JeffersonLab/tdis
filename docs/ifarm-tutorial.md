@@ -1,15 +1,25 @@
 # IFarm tutorial
 
+**In this tutorial we will use docker/podman containers to build tdis software on ifarm.**
+
 IFarm stands for "Interactive Farm" a part of Jefferson Lab scientific computing environment.
 Users are free to use ifarm nodes for software development and testing, but do not run long tasks.
 
-https://jlab.servicenowservices.com/kb?id=kb_article&sysparm_article=KB0014687
+More information:
+- [containers and tdis images](containers.md)
+- [how to build tdis software](install.md)
+- [login to ifarm ↗](https://jlab.servicenowservices.com/kb?id=kb_article&sysparm_article=KB0014687)
+- [using containers at JLab ↗](https://pages.jlab.org/scicomp/software/jlab-container-docs/)
 
-In this tutorial we will use docker/podman containers. For more information [on containers and TDIS images](containers.md)
+## Using podman
 
-## Podman
+Podman or `podman` command should be available on ifarm our of the box after login.
+`podman` have the same subcommands as `docker`, on ifarm `docker` is an alias to podman
 
-Podman should be available on ifarm our of the box after login. 
+```bash
+# run podman command:
+podman --version
+```
 
 To get the image needed to build `tdis` software: 
 
@@ -44,7 +54,7 @@ After `ls /tdis` you should see in container the content of CUE `/work/halla/tdi
 Now you can follow [install](install.md) page with software installation instructions.
 
 
-## Build 
+## Build software
 
 **(!!!) use your username `/work/halla/tdis/<username>` directory for YOUR work (!!!)**
 
