@@ -44,7 +44,12 @@ namespace tdis::tracking {
 
         Service<ActsGeometryService> m_acts_geo_svc{this};
         Service<services::LogService> m_log_svc{this};
+
+        // Use parameters:
         Parameter<double> m_bz{this, "bz", 1.5, "Magnetic field in Z (Tesla)"};
+        Parameter<std::string> m_csv_out{this, "csv_file", "kf_fit_summary.csv",  "File to append MC-vs-reco track summary"};
+        Parameter<std::string> m_acts_level{this, "acts_level", "INFO", "ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)"};
+
         std::shared_ptr<ActsExamples::ConfiguredFitter> m_fitter ;
 
         KalmanFittingFactory();
@@ -61,6 +66,10 @@ namespace tdis::tracking {
 
         std::shared_ptr<Propagator> m_propagator;
         std::shared_ptr<KF> m_kalman_fitter;
+        std::ofstream m_csv;
+
+
+
     };
 
 } // namespace tdis::tracking
