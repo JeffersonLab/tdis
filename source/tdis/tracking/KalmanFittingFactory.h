@@ -67,9 +67,6 @@ namespace tdis::tracking {
         std::shared_ptr<Propagator> m_propagator;
         std::shared_ptr<KF> m_kalman_fitter;
         std::ofstream m_csv;
-
-
-
     };
 
 } // namespace tdis::tracking
