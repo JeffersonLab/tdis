@@ -12,12 +12,60 @@
 #include "podio_model/TrackCollection.h"
 #include "podio_model/TrackParametersCollection.h"
 #include "podio_model/TrajectoryCollection.h"
+#include "Acts/Plugins/Podio/PodioTrackContainer.hpp"
+#include "Acts/Plugins/Podio/PodioTrackStateContainer.hpp"
+#include "Acts/Plugins/Podio/PodioUtil.hpp"
 
 namespace tdis::tracking {
 
 KalmanFittingFactory::KalmanFittingFactory() {
 
 }
+
+
+    struct MapHelper : public Acts::PodioUtil::ConversionHelper {
+        std::optional<Acts::PodioUtil::Identifier> surfaceToIdentifier(const Acts::Surface& surface) const override {
+            for (auto&& [id, srf] : surfaces) {
+                if (srf == &surface) {
+                    return id;
+                }
+            }
+            return {};
+        }
+
+        const Acts::Surface* identifierToSurface(Acts::PodioUtil::Identifier id) const override {
+            auto it = surfaces.find(id);
+            if (it == surfaces.end()) {
+                return nullptr;
+            }
+
+            return it->second;
+        }
+
+        Acts::PodioUtil::Identifier sourceLinkToIdentifier(const Acts::SourceLink& sl) override {
+            sourceLinks.push_back(sl);
+            return sourceLinks.size() - 1;
+        }
+
+        Acts::SourceLink identifierToSourceLink(Acts::PodioUtil::Identifier id) const override {
+            return sourceLinks.at(id);
+        }
+
+        std::unordered_map<Acts::PodioUtil::Identifier, const Acts::Surface*> surfaces;
+        std::vector<Acts::SourceLink> sourceLinks;
+    };
+
+    struct Factory {
+        using trajectory_t = Acts::MutablePodioTrackStateContainer;
+        using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
+
+        MapHelper m_helper;
+
+        Acts::MutablePodioTrackStateContainer create() {
+            return Acts::MutablePodioTrackStateContainer{m_helper};
+        }
+    };
+
 
 void KalmanFittingFactory::Configure() {
     // Setup magnetic field
@@ -88,6 +136,11 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     auto trackContainer = std::make_shared<Acts::VectorTrackContainer>();
     auto trackStateContainer = std::make_shared<Acts::VectorMultiTrajectory>();
     Acts::TrackContainer tracks(trackContainer, trackStateContainer);
+
+    using trajectory_t = Acts::MutablePodioTrackStateContainer;
+    using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
+    Acts::MutablePodioTrackStateContainer t;
+
 
     // KalmanFitter extensions with default components
     Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> extensions;
