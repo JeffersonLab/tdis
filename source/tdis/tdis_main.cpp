@@ -1,13 +1,6 @@
-//
-// // Copyright 2023, Jefferson Science Associates, LLC.
-// // Subject to the terms in the LICENSE file found in the top-level directory.
-// #include <iostream>
-// #include <podio/CollectionBase.h>
-// #include <podio/Frame.h>
-// #include "datamodel/MutableExampleHit.h"
-// #include "datamodel/ExampleHitCollection.h"
-// #include <podio/ROOTFrameWriter.h>
-// #include <podio/ROOTFrameReader.h>
+// Copyright 2023, Jefferson Science Associates, LLC.
+// Subject to the terms in the LICENSE file found in the top-level directory.
+// Created by Dmitry Romanov, 2024
 
 #include <JANA/Components/JOmniFactoryGeneratorT.h>
 #include <JANA/JApplication.h>
@@ -23,7 +16,7 @@
 #include "tracking/ReconstructedHitFactory.h"
 #include "tracking/TruthTrackParameterFactory.h"
 #include "tracking/KalmanFittingFactory.h"
-// #include "tracking/Measurement2DFactory.h"
+
 
 struct ProgramArguments {
     std::map<std::string, std::string> params;
@@ -112,6 +105,7 @@ int main(int argc, char* argv[]) {
         parameterManager->SetParameter(name, value);
     }
 
+    // JANA2 Application coordinates and runs everything
     JApplication app(parameterManager);
 
     // Register services:
