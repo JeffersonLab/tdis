@@ -23,48 +23,48 @@ KalmanFittingFactory::KalmanFittingFactory() {
 }
 
 
-    struct MapHelper : public Acts::PodioUtil::ConversionHelper {
-        std::optional<Acts::PodioUtil::Identifier> surfaceToIdentifier(const Acts::Surface& surface) const override {
-            for (auto&& [id, srf] : surfaces) {
-                if (srf == &surface) {
-                    return id;
-                }
+struct MapHelper : public Acts::PodioUtil::ConversionHelper {
+    std::optional<Acts::PodioUtil::Identifier> surfaceToIdentifier(const Acts::Surface& surface) const override {
+        for (auto&& [id, srf] : surfaces) {
+            if (srf == &surface) {
+                return id;
             }
-            return {};
+        }
+        return {};
+    }
+
+    const Acts::Surface* identifierToSurface(Acts::PodioUtil::Identifier id) const override {
+        auto it = surfaces.find(id);
+        if (it == surfaces.end()) {
+            return nullptr;
         }
 
-        const Acts::Surface* identifierToSurface(Acts::PodioUtil::Identifier id) const override {
-            auto it = surfaces.find(id);
-            if (it == surfaces.end()) {
-                return nullptr;
-            }
+        return it->second;
+    }
 
-            return it->second;
-        }
+    Acts::PodioUtil::Identifier sourceLinkToIdentifier(const Acts::SourceLink& sl) override {
+        sourceLinks.push_back(sl);
+        return sourceLinks.size() - 1;
+    }
 
-        Acts::PodioUtil::Identifier sourceLinkToIdentifier(const Acts::SourceLink& sl) override {
-            sourceLinks.push_back(sl);
-            return sourceLinks.size() - 1;
-        }
+    Acts::SourceLink identifierToSourceLink(Acts::PodioUtil::Identifier id) const override {
+        return sourceLinks.at(id);
+    }
 
-        Acts::SourceLink identifierToSourceLink(Acts::PodioUtil::Identifier id) const override {
-            return sourceLinks.at(id);
-        }
+    std::unordered_map<Acts::PodioUtil::Identifier, const Acts::Surface*> surfaces;
+    std::vector<Acts::SourceLink> sourceLinks;
+};
 
-        std::unordered_map<Acts::PodioUtil::Identifier, const Acts::Surface*> surfaces;
-        std::vector<Acts::SourceLink> sourceLinks;
-    };
+struct Factory {
+    using trajectory_t = Acts::MutablePodioTrackStateContainer;
+    using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
 
-    struct Factory {
-        using trajectory_t = Acts::MutablePodioTrackStateContainer;
-        using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
+    MapHelper m_helper;
 
-        MapHelper m_helper;
-
-        Acts::MutablePodioTrackStateContainer create() {
-            return Acts::MutablePodioTrackStateContainer{m_helper};
-        }
-    };
+    Acts::MutablePodioTrackStateContainer create() {
+        return Acts::MutablePodioTrackStateContainer{m_helper};
+    }
+};
 
 
 void KalmanFittingFactory::Configure() {
@@ -112,6 +112,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
 
     auto geometry = m_acts_geo_svc->GetTrackingGeometry();
+
 
     // Retrieve input data
     const auto& mcTracks = *m_mc_tracks_input();

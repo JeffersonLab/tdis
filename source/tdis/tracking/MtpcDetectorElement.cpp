@@ -23,10 +23,6 @@ namespace tdis::tracking {
     {
         // Create the cylinder surface
         m_elementSurface = Acts::Surface::makeShared<Acts::CylinderSurface>(m_elementCylinderBounds, *this);
-        //const auto geoId = Acts::GeometryIdentifier(ringId);
-
-        //m_elementSurface->assignGeometryId(geoId);
-
         if (material) {
             m_elementSurface->assignSurfaceMaterial(material);
         }
