@@ -81,8 +81,29 @@ find_package(JANA REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(Boost REQUIRED)
-find_package(ROOT COMPONENTS Core RIO Hist Graf Gpad Tree Postscript Matrix Physics MathCore)
-find_package(Acts REQUIRED COMPONENTS Core PluginTGeo PluginJson)
+find_package(ROOT COMPONENTS Core RIO Hist Graf Gpad Geom Tree Postscript Matrix Physics MathCore)
+find_package(Acts)
+# Get all variables
+GET_CMAKE_PROPERTY(vars VARIABLES)
+
+# Filter by prefix and build the "res" list
+FOREACH(var ${vars})
+    STRING(REGEX MATCH "^(ACTS|acts|Acts)" item ${var})
+    IF(item)
+        message(VERBOSE "ACTS params: ${var}=${${var}}")
+    ENDIF(item)
+ENDFOREACH(var)
+find_package(Acts REQUIRED COMPONENTS Core PluginPodio)
+
+
+# Filter by prefix and build the "ROOT" list
+FOREACH(var ${vars})
+    STRING(REGEX MATCH "^(ROOT|root)" item ${var})
+    IF(item)
+        message(VERBOSE "ROOT params: ${var}=${${var}}")
+    ENDIF(item)
+ENDFOREACH(var)
+find_package(Acts REQUIRED COMPONENTS Core PluginPodio)
 
 # ----------- Configure ACTS ExamplesLibrary --------
 # ExamplesLibrary actually creates ACTS event model
@@ -120,15 +141,15 @@ target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURREN
 target_link_libraries(tdis
         ${JANA_LIB}
         stdc++fs
-        ROOT::RIO ROOT::Core
+        ROOT::RIO ROOT::Core ROOT::Geom
         podio::podio podio::podioRootIO podio_model_lib podio_model_dict
         spdlog::spdlog
         fmt::fmt
         CLI11::CLI11
         Boost::boost
         ActsCore
-        ActsPluginTGeo
         ActsPluginJson
+        ActsPluginPodio
         ${ActsExamples_LIB}
         #/container/app/acts/acts-v37.4.0/lib/libActsExamplesFramework.so
         # ${ActsCore_PATH}/libActsExamplesFramework.so
