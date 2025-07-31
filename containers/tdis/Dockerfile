@@ -1,6 +1,5 @@
 # docker buildx build --tag eicdev/tdis:latest --push .
-# docker build -t eicdev/tdis:latest .
-# docker build -t eicdev/tdis:latest --build-arg BUILD_THREADS=24 .
+# docker buildx build --no-cache --build-arg BUILD_THREADS=24 --tag eicdev/tdis:latest --push .
 # docker push eicdev/tdis:latest
 #
 # docker run --rm -it --init eicdev/tdis:latest
@@ -33,8 +32,8 @@ RUN set -ex && \
       -DJANA_DIR="${APP_ROOT}/jana2/lib/cmake/JANA" \
       "${TDIS_SRC_PATH}" && \
     cmake --build . -j"${BUILD_THREADS}" && \
-    cmake --build . --target install && \
-    rm -rf "${TDIS_BLD_PATH}" "${TDIS_SRC_PATH}"
+    cmake --build . --target install
+    # && rm -rf "${TDIS_BLD_PATH}" "${TDIS_SRC_PATH}"
 
 # Set environment variables for TDIS
 ENV PATH="${TDIS_INS_PATH}/bin:${PATH}" \
