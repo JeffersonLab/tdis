@@ -30,7 +30,7 @@ To download or update the container:
 ```bash
 docker pull eicdev/tdis-pre
 ```
-
+If the above command gives errors, check the next section to fix it.
 Running docker (minimal and probably useless):
 
 ```bash
@@ -57,6 +57,9 @@ Docker works somehow like tmux or screen - you can reconnect to the running cont
 attach many bash shells and even if container is stopped you can start it again and reconnect.
 This makes debugging easier, and you retain all your data. But `--rm` flag good for repeatability, tutorials and
 saving the disk space because of forgotten and never removed containers, etc..
+
+**Solving errors downloading the container:** 
+If you have the following error "Error: copying system image from manifest list: writing blob: adding layer with blob ...", you might have variable "graphroot" configured to download the container in your home directory. To solve it, open the following file:  `$HOME/.config/containers/storage.conf` and modify line 4 `graphroot = "home/$USER/.local/share/containers/"` to `graphroot = "scratch/$USER"`
 
 **Related docker documentation:**
 
