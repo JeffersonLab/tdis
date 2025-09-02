@@ -31,6 +31,7 @@ To download or update the container:
 docker pull eicdev/tdis-pre
 ```
 If the above command gives errors, check the next section to fix it.
+
 Running docker (minimal and probably useless):
 
 ```bash
@@ -59,6 +60,7 @@ This makes debugging easier, and you retain all your data. But `--rm` flag good 
 saving the disk space because of forgotten and never removed containers, etc..
 
 **Solving errors downloading the container:** 
+
 If you have the following error "Error: copying system image from manifest list: writing blob: adding layer with blob ...", you might have variable "graphroot" configured to download the container in your home directory. To solve it, open the following file:  `$HOME/.config/containers/storage.conf` and modify line 4 `graphroot = "home/$USER/.local/share/containers/"` to `graphroot = "scratch/$USER"`
 
 **Related docker documentation:**
