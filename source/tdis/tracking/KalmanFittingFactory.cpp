@@ -4,6 +4,7 @@
 #include <Acts/Utilities/Helpers.hpp>
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 
+#include "ActsLogHeplers.h"
 #include "ConfiguredKalmanFitter.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
@@ -31,10 +32,21 @@ void KalmanFittingFactory::Configure() {
     // Initialize KalmanFitter
     m_kalman_fitter = std::make_shared<KF>(*m_propagator);
 
-
     m_logger = m_log_svc->logger("tracking/kf");
-    // TODO connect spdlog with ACTS logger m_acts_logger = Acts::getDefaultLogger("KF", Acts::Logging::INFO, &m_logger->sinks());
-    m_acts_logger = Acts::getDefaultLogger("KF", Acts::Logging::VERBOSE);
+
+
+    // ---------- CSV ----------
+    m_csv.open(m_csv_out(), std::ios::out | std::ios::trunc);
+    if (!m_csv) {
+        throw std::runtime_error("Cannot open CSV output file " + m_csv_out());
+    }
+    m_csv << "#evt, mc_p_GeV, mc_theta_deg, mc_phi_deg,"
+             "reco_p_GeV, reco_theta_deg, reco_phi_deg,"
+             "chi2, ndof, chi2_per_ndof\n";
+
+    // ---------- ACTS logger ----------
+    auto lvl = strToActsLevel(m_acts_level());
+    m_acts_logger = Acts::getDefaultLogger("KF", lvl);
 
 
     m_fitter = ActsExamples::makeKalmanFitterFunction(
@@ -220,6 +232,13 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
             // If you want to do anything with the resulting track proxy right now,
             // you can retrieve it (but it's already in 'tracks'):
             auto& trackProxy = result.value();
+            auto tip = trackProxy.tipIndex();
+            auto absMom = trackProxy.absoluteMomentum();
+            m_logger->debug("mcTrack.mom = {} reco mom = {}", mcTrack.momentum(), absMom);
+            m_logger->debug("mcTrack.theta = {} reco = {}", mcTrack.theta(), trackProxy.theta());
+            m_logger->debug("mcTrack.phi  = {} reco phi {}", mcTrack.theta(), trackProxy.phi());
+            m_logger->debug("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
+
             m_logger->debug("Successfully fitted track => track p {} in container",
                             trackProxy.absoluteMomentum());
         }
@@ -284,7 +303,6 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
                 }
             }
         }
-
 
         trajectory.addtrackParameters(edmTrackParams);
         edmTrack.trajectory(trajectory);

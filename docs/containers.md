@@ -7,15 +7,14 @@ The containers are for docker/podman but singularity can work with docker contai
 - [Docker Hub](https://hub.docker.com/u/eicdev)
 - [Using containers at JLab](https://pages.jlab.org/scicomp/software/jlab-container-docs/)
 - [TDIS containers source code](https://github.com/JeffersonLab/tdis/tree/main/containers/ubuntu-root)
+- 
 ### Images structure:
 
 ![hierarchy](_media/image-hierarhy.svg)
 
-
 - **eicdev/tdis-pre** - have all compiling/debugging/testing environment and dependent packages such as ROOT, JANA2, Podio, etc.
   The image is to be used for development, automation, etc.
 - **eicdev/tdis** - Has tdis repo compiled and tdis command ready for use on farms, etc
-
 
 
 ## Run in docker

@@ -137,16 +137,12 @@ target_link_libraries(tdis
 set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 target_include_directories(tdis PRIVATE "podio_model")
 target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
-
-
-
 target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")
 
 # ----------- install destination -------------------
 install(TARGETS tdis DESTINATION bin)
 install(TARGETS podio_model_lib DESTINATION lib)
-# install(TARGETS podio_model_dict DESTINATION lib)
-
+install(TARGETS podio_model_dict DESTINATION lib)
 
 
 if(WITH_TESTS)

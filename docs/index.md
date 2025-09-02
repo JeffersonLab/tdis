@@ -1,25 +1,21 @@
 
 # TDIS
 
-TDIS is the experiment at Jefferson Lab to investigate tagged deep inelastic scattering (TDIS) 
-by measuring high W2, Q2 electrons scattered from hydrogen and deuterium targets in coincidence
-with low momentum recoiling protons. This is a pioneering experiment that will 
-probe the elusive mesonic content of the nucleon, using the tagging technique to
-isolate for example scattering from the pion in proton to pion fluctuations.
+The Tagged Deep Inelastic Scattering (TDIS) experiment will probe the mesonic (pion-cloud) component 
+of the nucleon—a key to understanding its structure. It will run in Hall A at Thomas Jefferson Lab, 
+using the Super BigBite Spectrometer together with  GEM-based radial time-projection chamber.
 
-The experiment will be implemented at the Thomas Jefferson National Acceleration Facility 
-in Hall A utilizing Super BigBite spectrometer for electron detection, in conjunction with the thin target, solenoid and GEM-based radial time projection chamber. These combined systems, along with the
-CEBAF high current CW beam, leverage the high luminosity and unique kinematics
-required to access the proposed physics.
-
-[Read more on it](https://www.jlab.org/exp_prog/proposals/14/PR12-14-010.pdf)
+[Read more on experiment...](https://www.jlab.org/exp_prog/proposals/14/PR12-14-010.pdf)
 
 ## tdis software
 
 The **[tdis](https://github.com/JeffersonLab/tdis ":target=_blank")** \* software is ACTS + JANA-2 based package, developed for TDIS multi-TPC chamber tracking reconstruction. 
 
-> \* - **tdis** software is usually written in small letters or using code quotes like `tdis` to distinguish from TDIS experiment
+- [GitHUB](https://github.com/JeffersonLab/tdis)
+- [Roadmap](https://github.com/JeffersonLab/tdis/issues)
+- [Project](https://github.com/orgs/JeffersonLab/projects/61)
 
+> \* - **tdis** software is usually written in small letters or using code quotes like `tdis` to distinguish from TDIS experiment
 
 ### ACTS
 
