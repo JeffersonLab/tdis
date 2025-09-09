@@ -198,8 +198,12 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
 
         // Create initial parameters at perigee
         auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-            Acts::Vector3(track_start_x, track_start_y, track_start_z)
+             Acts::Vector3(track_start_x, track_start_y, track_start_z)
         );
+
+        // auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+        //     Acts::Vector3(0,0,0)
+        // );
         Acts::BoundVector params = Acts::BoundVector::Zero();
         params[Acts::eBoundPhi] = phi;
         params[Acts::eBoundTheta] = theta;
@@ -225,7 +229,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         // 7) Run the Kalman fit => result
         auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
         if (!result.ok()) {
-            m_logger->error("Fit failed for track {}: {}", mcTrack.id().index,
+            m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, 
                             result.error().message());
             continue;
         } else {
@@ -234,10 +238,10 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
             auto& trackProxy = result.value();
             auto tip = trackProxy.tipIndex();
             auto absMom = trackProxy.absoluteMomentum();
-            m_logger->debug("mcTrack.mom = {} reco mom = {}", mcTrack.momentum(), absMom);
-            m_logger->debug("mcTrack.theta = {} reco = {}", mcTrack.theta(), trackProxy.theta());
-            m_logger->debug("mcTrack.phi  = {} reco phi {}", mcTrack.theta(), trackProxy.phi());
-            m_logger->debug("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
+            m_logger->info("mcTrack.mom = {} reco mom = {}", mcTrack.momentum(), absMom);
+            m_logger->info("mcTrack.theta = {} reco = {}", mcTrack.theta(), trackProxy.theta());
+            m_logger->info("mcTrack.phi  = {} reco phi {}", mcTrack.theta(), trackProxy.phi());
+            m_logger->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
 
             m_logger->debug("Successfully fitted track => track p {} in container",
                             trackProxy.absoluteMomentum());

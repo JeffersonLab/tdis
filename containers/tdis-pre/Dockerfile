@@ -153,7 +153,7 @@ ENV HEPMC3_DIR=${HEPMC3_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          ACTS build                                                    ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_ACTS=v41.1.0
+ARG VERSION_ACTS=v42.1.1
 ENV ACTS_SRC_PATH=${APP_ROOT}/acts-src \
     ACTS_BLD_PATH=${APP_ROOT}/acts-build \
     ACTS_INS_PATH=${APP_ROOT}/acts
