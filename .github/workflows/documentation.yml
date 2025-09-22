@@ -1,4 +1,4 @@
-name: Deploy Docsify to GitHub Pages
+name: documentation
 
 on:
   # Runs on pushes targeting the default branch

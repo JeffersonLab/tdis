@@ -72,10 +72,10 @@ namespace tdis::tracking {
             for (auto mc_hit : *m_mc_hits_in()) {
 
                 // Basic geometry indices
-                const int plane = mc_hit.plane();
-                const int ring  = mc_hit.ring();
-                const int pad   = mc_hit.pad();
-                const double z_to_gem = mc_hit.zToGem();
+                const int plane = mc_hit.getPlane();
+                const int ring  = mc_hit.getRing();
+                const int pad   = mc_hit.getPad();
+                const double z_to_gem = mc_hit.getZToGem();
 
                 if (pad == -999) break;
                 // Convert ring+pad to (x,y)
@@ -93,16 +93,16 @@ namespace tdis::tracking {
                     "pad_x {:.2f} true_x {:.2f} pad_y {:.2f} true_y {:.2f} "
                     "plane_z {:.2f} z_to_gem {:.2f} calc_z {:.2f} true_z {:.2f}",
                     plane, ring, pad, ring_radius, pad_center_r,
-                    pad_x, mc_hit.truePosition().x,
-                    pad_y, mc_hit.truePosition().y,
-                    plane_z, z_to_gem, calc_z, mc_hit.truePosition().z);
+                    pad_x, mc_hit.getTruePosition().x,
+                    pad_y, mc_hit.getTruePosition().y,
+                    plane_z, z_to_gem, calc_z, mc_hit.getTruePosition().z);
 
                 // Choose position: either true or digitized
                 edm4hep::Vector3f position;
-                if (m_cfg_use_true_pos() && !std::isnan(mc_hit.truePosition().x)) {
-                    position.x = mc_hit.truePosition().x;
-                    position.y = mc_hit.truePosition().y;
-                    position.z = mc_hit.truePosition().z;
+                if (m_cfg_use_true_pos() && !std::isnan(mc_hit.getTruePosition().x)) {
+                    position.x = mc_hit.getTruePosition().x;
+                    position.y = mc_hit.getTruePosition().y;
+                    position.z = mc_hit.getTruePosition().z;
                 } else {
                     position.x = (float) pad_x;
                     position.y = (float) pad_y;
@@ -118,21 +118,21 @@ namespace tdis::tracking {
                                        static_cast<float>(xy_variance),
                                        static_cast<float>(1_cm)};
 
-                uint32_t cell_id = 1'000'000 * mc_hit.plane() + 1'000 * mc_hit.ring() + mc_hit.pad();
+                uint32_t cell_id = 1'000'000 * mc_hit.getPlane() + 1'000 * mc_hit.getRing() + mc_hit.getPad();
 
                 auto hit = rec_hits->create(
                     cell_id,
                     position,
                     cov,
-                    static_cast<float>(mc_hit.time()),
+                    static_cast<float>(mc_hit.getTime()),
                     static_cast<float>(1_ns),   // Time resolution (placeholder)
-                    static_cast<float>(mc_hit.adc()),
+                    static_cast<float>(mc_hit.getAdc()),
                     0.0F
                 );
-                hit.rawHit(mc_hit);
+                hit.setRawHit(mc_hit);
 
                 // Retrieve the geometry element (Acts cylinder) for this ring
-                auto acts_det_element = m_service_geometry().GetDetectorCylinder(mc_hit.ring());
+                auto acts_det_element = m_service_geometry().GetDetectorCylinder(mc_hit.getRing());
                 auto& surfaceRef      = acts_det_element->surface();
                 auto geometryId = surfaceRef.geometryId().value();
 
@@ -198,7 +198,7 @@ namespace tdis::tracking {
                 // ----------------------------------------------------------------------
                 // Attempt to find local 2D measurement coordinates on the surface
                 // ----------------------------------------------------------------------
-                const auto& hit_pos = hit.position();  // 3D position from above
+                const auto& hit_pos = hit.getPosition();  // 3D position from above
                 Acts::Vector2 loc   = Acts::Vector2::Zero();
 
                 // Acts tolerance for checking if a point is close to surface
@@ -223,7 +223,7 @@ namespace tdis::tracking {
                 } catch (std::exception& ex) {
                     auto message = fmt::format("Can't convert globalToLocal for hit: plane={} ring={} pad={} "
                         "RecoHit x={} y={} z={}. Reason: {}",
-                        mc_hit.plane(), mc_hit.ring(), mc_hit.pad(),
+                        mc_hit.getPlane(), mc_hit.getRing(), mc_hit.getPad(),
                         hit_pos.x, hit_pos.y, hit_pos.z, ex.what());
                     m_log->warn(message);
                     continue;
@@ -249,19 +249,19 @@ namespace tdis::tracking {
                 // Create a new measurement2D
                 auto meas2D = measurements->create();
 
-                meas2D.surface(surfaceRef.geometryId().value());
-                meas2D.loc({static_cast<float>(loc[0]), static_cast<float>(loc[1])});
-                meas2D.time(hit.time());
+                meas2D.setSurface(surfaceRef.geometryId().value());
+                meas2D.setLoc({static_cast<float>(loc[0]), static_cast<float>(loc[1])});
+                meas2D.setTime(hit.getTime());
 
                 // Covariance on local coords (no off-diagonal for now), plus time
-                meas2D.covariance({
+                meas2D.setCovariance({
                     cov(0, 0),
                     cov(1, 1),
-                    hit.timeError() * hit.timeError(),
+                    hit.getTimeError() * hit.getTimeError(),
                     cov(0, 1)
                 });
-                meas2D.addweights(1.0); // Example usage
-                meas2D.addhits(hit);
+                meas2D.addToWeights(1.0); // Example usage
+                meas2D.addToHits(hit);
             }
 
             // Write out the results

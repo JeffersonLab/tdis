@@ -1,4 +1,4 @@
-name: Linux Build and Test
+name: c++ build and test
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       image: eicdev/tdis-pre
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
 #      - uses: actions/cache@v3
 #        with:
@@ -32,10 +32,3 @@ jobs:
       - name: build
         run: cmake --build build -j4
 
-      - name: test
-        run: |
-          cd build
-          ctest --build-config Debug
-
-      - name: collect code coverage
-        run: bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"

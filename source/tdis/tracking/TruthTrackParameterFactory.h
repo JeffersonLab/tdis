@@ -67,22 +67,22 @@ namespace tdis::tracking {
                 }
 
                 // require close to interaction vertex
-                auto v = mc_track.hits().at(0).truePosition();  // Use it as a vertex for now
+                auto v = mc_track.getHits().at(0).getTruePosition();  // Use it as a vertex for now
                 double vx = v.x;
                 double vy = v.y;
                 double vz = v.z;
 
 
-                double magnitude = mc_track.momentum();
-                double theta = mc_track.theta();
-                double phi = mc_track.phi();
+                double magnitude = mc_track.getMomentum();
+                double theta = mc_track.getTheta();
+                double phi = mc_track.getPhi();
                 const auto eta   = -std::log(std::tan(theta/2));
                 double px = magnitude * std::sin(theta) * std::cos(phi);
                 double py = magnitude * std::sin(theta) * std::sin(phi);
                 double pz = magnitude * std::cos(theta);
 
                 // require minimum momentum
-                const auto& p = mc_track.momentum();
+                const auto& p = mc_track.getMomentum();
                 const auto pmag = std::hypot(px, py, pz);
 
                 // modify initial momentum to avoid bleeding truth to results when fit fails
@@ -116,12 +116,12 @@ namespace tdis::tracking {
 
                 // Insert into edm4eic::TrackParameters, which uses numerical values in its specified units
                 auto track_parameter = track_parameters->create();
-                track_parameter.type(-1); // type --> seed(-1)
-                track_parameter.loc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))}); // 2d location on surface [mm]
-                track_parameter.phi(phi); // phi [rad]
-                track_parameter.theta(theta); // theta [rad]
-                track_parameter.qOverP(charge / (pinit)); // Q/p [e/GeV]
-                track_parameter.time(mc_track.hits().at(0).time()); // time [ns]
+                track_parameter.setType(-1); // type --> seed(-1)
+                track_parameter.setLoc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))}); // 2d location on surface [mm]
+                track_parameter.setPhi(phi); // phi [rad]
+                track_parameter.setTheta(theta); // theta [rad]
+                track_parameter.setQOverP(charge / (pinit)); // Q/p [e/GeV]
+                track_parameter.setTime(mc_track.getHits().at(0).getTime()); // time [ns]
                 edm4eic::Cov6f cov;
                 cov(0,0) = 1.0; // loc0
                 cov(1,1) = 1.0; // loc1
@@ -129,18 +129,7 @@ namespace tdis::tracking {
                 cov(3,3) = 0.01; // theta
                 cov(4,4) = 0.1; // qOverP
                 cov(5,5) = 10e9; // time
-                track_parameter.covariance(cov);
-
-
-                // // Debug output
-                // if (m_log->level() <= spdlog::level::debug) {
-                //     m_log->debug("Invoke track finding seeded by truth particle with:");
-                //     m_log->debug("   p     = {} GeV (smeared to {} GeV)", pmag / dd4hep::GeV, pinit / dd4hep::GeV);
-                //     m_log->debug("   q     = {}", charge);
-                //     m_log->debug("   q/p   = {} e/GeV (smeared to {} e/GeV)", charge / (pmag / dd4hep::GeV), charge / (pinit / dd4hep::GeV));
-                //     m_log->debug("   theta = {}", theta);
-                //     m_log->debug("   phi   = {}", phi);
-                // }
+                track_parameter.setCovariance(cov);
             }
 
 

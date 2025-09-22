@@ -33,7 +33,13 @@ FetchContent_MakeAvailable(spdlog)
 
 # --------- GENERATE PODIO --------------
 find_package(podio REQUIRED)
-PODIO_GENERATE_DATAMODEL(podio_model "layout.yaml" DATAMODEL_HEADERS DATAMODEL_SOURCES OUTPUT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/podio_model")
+# PODIO_GENERATE_DATAMODEL(podio_model "layout.yaml" DATAMODEL_HEADERS DATAMODEL_SOURCES OUTPUT_FOLDER "")
+
+PODIO_GENERATE_DATAMODEL(podio_model "edm.yaml" DATAMODEL_HEADERS DATAMODEL_SOURCES
+        UPSTREAM_EDM acts:${CMAKE_CURRENT_SOURCE_DIR}/acts_edm.yml
+        OUTPUT_FOLDER "${CMAKE_CURRENT_SOURCE_DIR}/podio_model"
+)
+
 PODIO_ADD_DATAMODEL_CORE_LIB(podio_model_lib "${DATAMODEL_HEADERS}" "${DATAMODEL_SOURCES}")
 PODIO_ADD_ROOT_IO_DICT(podio_model_dict podio_model_lib "${DATAMODEL_HEADERS}" "podio_model/src/selection.xml")
 

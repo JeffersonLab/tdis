@@ -346,27 +346,27 @@ namespace tdis::io {
         DigitizedMtpcMcTrackCollection podioTracks;
         DigitizedMtpcMcHitCollection podioHits;
         auto podioTrack = podioTracks.create();
-        podioTrack.phi(track.phi);
-        podioTrack.theta(track.theta);
-        podioTrack.vertexZ(track.vertexZ);
-        podioTrack.momentum(track.momentum);
+        podioTrack.setPhi(track.phi);
+        podioTrack.setTheta(track.theta);
+        podioTrack.setVertexZ(track.vertexZ);
+        podioTrack.setMomentum(track.momentum);
         for(auto& hit: track.hits) {
 
             auto podioHit = podioHits.create();
-            podioHit.time(   hit.time * Acts::UnitConstants::ns  );
-            podioHit.adc(    hit.adc   );
-            podioHit.ring(   hit.ring  );
-            podioHit.pad(    hit.pad   );
-            podioHit.plane(  hit.plane );
-            podioHit.zToGem( hit.zToGem  * Acts::UnitConstants::m);
+            podioHit.setTime(   hit.time * Acts::UnitConstants::ns  );
+            podioHit.setAdc(    hit.adc   );
+            podioHit.setRing(   hit.ring  );
+            podioHit.setPad(    hit.pad   );
+            podioHit.setPlane(  hit.plane );
+            podioHit.setZToGem( hit.zToGem  * Acts::UnitConstants::m);
 
             edm4hep::Vector3f true_pos = edm4hep::Vector3f{
                 static_cast<float>(hit.true_x * Acts::UnitConstants::m),
                 static_cast<float>(hit.true_y * Acts::UnitConstants::m),
                 static_cast<float>(hit.true_z * Acts::UnitConstants::m)
             };
-            podioHit.truePosition(true_pos);
-            podioTrack.addhits(podioHit);
+            podioHit.setTruePosition(true_pos);
+            podioTrack.addToHits(podioHit);
         }
 
         EventInfoCollection info;
