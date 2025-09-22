@@ -35,6 +35,7 @@ void KalmanFittingFactory::Configure() {
     m_logger = m_log_svc->logger("tracking/kf");
 
 
+
     // ---------- CSV ----------
     m_csv.open(m_csv_out(), std::ios::out | std::ios::trunc);
     if (!m_csv) {
