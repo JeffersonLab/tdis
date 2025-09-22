@@ -106,6 +106,9 @@ namespace tdis::io {
 
         /// Do we need it at all?
         static std::string GetDescription();
+
+        Parameter<int> m_tracks_per_event{this, "io:tracks_per_event", 1, "Number of tracks to combine per event"};
+        Service<services::LogService> m_log_svc{this};
     private:
 
         /// Parses string tokens to form DigitizedReadoutHit
@@ -130,7 +133,9 @@ namespace tdis::io {
 
     inline void DigitizedDataEventSource::Init() {
         auto app = GetApplication();
-        m_log = app->GetService<tdis::services::LogService>()->logger("DigitizedDataEventSource");
+        m_log = m_log_svc->logger("io");
+        m_log->info("Our log level is: ", services::LogLevelToString(m_log->level()));
+        m_log->info("Number tracks per event is: {}", m_tracks_per_event());
     }
 
     inline void DigitizedDataEventSource::Open() {
@@ -279,6 +284,8 @@ namespace tdis::io {
         event.SetRunNumber(22);
 
         auto lines = ReadNextEventLines(m_input_file);
+        m_log->debug("Number of lines per event: {}", lines.size());
+
         if (lines.empty()) {
             if (m_input_file.bad() || m_input_file.fail() || m_input_file.eof()) {
                 PrintStreamError(m_input_file);
