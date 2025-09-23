@@ -31,14 +31,7 @@
 
 
 
-namespace {
-
-    using Stepper = Acts::SympyStepper;
-    using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
-    using Fitter = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
-    using DirectPropagator = Acts::Propagator<Stepper, Acts::DirectNavigator>;
-    using DirectFitter = Acts::KalmanFitter<DirectPropagator, Acts::VectorMultiTrajectory>;
-    using TrackContainer = Acts::TrackContainer<Acts::VectorTrackContainer, Acts::VectorMultiTrajectory, std::shared_ptr>;
+namespace tdis {
 
     struct SimpleReverseFilteringLogic {
         double momentumThreshold = 0;
@@ -52,9 +45,9 @@ namespace {
 
     using namespace ActsExamples;
 
-    struct ConfiguredKalmanFitter final : public ConfiguredFitter {
-        Fitter fitter;
-        DirectFitter directFitter;
+    struct ConfiguredKalmanFitter final : public tdis::ConfiguredFitter {
+        KalmanFitter fitter;
+        DirectKalmanFitter directFitter;
 
         Acts::GainMatrixUpdater kfUpdater;
         Acts::GainMatrixSmoother kfSmoother;
@@ -66,7 +59,7 @@ namespace {
 
         IndexSourceLink::SurfaceAccessor slSurfaceAccessor;
 
-        ConfiguredKalmanFitter(Fitter&& f, DirectFitter&& df, const Acts::TrackingGeometry& trkGeo):
+        ConfiguredKalmanFitter(KalmanFitter&& f, DirectKalmanFitter&& df, const Acts::TrackingGeometry& trkGeo):
             fitter(std::move(f)),
             directFitter(std::move(df)),
             slSurfaceAccessor{trkGeo}
@@ -99,7 +92,7 @@ namespace {
             kfOptions.extensions.calibrator.connect<&calibrator_t::calibrate>(&calibrator);
 
             if (options.doRefit) {
-                kfOptions.extensions.surfaceAccessor.connect<&RefittingCalibrator::accessSurface>();
+                kfOptions.extensions.surfaceAccessor.connect<&tdis::RefittingCalibrator::accessSurface>();
             } else {
                 kfOptions.extensions.surfaceAccessor.connect<&IndexSourceLink::SurfaceAccessor::operator()>(&slSurfaceAccessor);
             }
@@ -125,7 +118,7 @@ namespace {
         TrackFitterResult operator()(const std::vector<Acts::SourceLink>& sourceLinks,
                                      const TrackParameters& initialParameters,
                                      const GeneralFitterOptions& options,
-                                     const RefittingCalibrator& calibrator,
+                                     const tdis::RefittingCalibrator& calibrator,
                                      const std::vector<const Acts::Surface*>& surfaceSequence,
                                      TrackContainer& tracks) const override
         {
@@ -140,9 +133,9 @@ namespace {
         }
     };
 
-}  // namespace
 
-std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFunction(
+
+std::shared_ptr<tdis::ConfiguredFitter> makeKalmanFitterFunction(
     std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
     std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
     bool multipleScattering,
@@ -153,7 +146,7 @@ std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFu
 
 
     // Stepper should be copied into the fitters
-    const Stepper stepper(std::move(magneticField));
+    const tdis::Stepper stepper(std::move(magneticField));
 
     // Standard fitter
     const auto& geo = *trackingGeometry;
@@ -165,12 +158,12 @@ std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFu
     Acts::Navigator navigator(cfg, logger.cloneWithSuffix("Navigator"));
 
     Propagator propagator(stepper, std::move(navigator), logger.cloneWithSuffix("Propagator"));
-    Fitter trackFitter(std::move(propagator), logger.cloneWithSuffix("Fitter"));
+    KalmanFitter trackFitter(std::move(propagator), logger.cloneWithSuffix("Fitter"));
 
     // Direct fitter
     Acts::DirectNavigator directNavigator{logger.cloneWithSuffix("DirectNavigator")};
     DirectPropagator directPropagator(stepper, std::move(directNavigator), logger.cloneWithSuffix("DirectPropagator"));
-    DirectFitter directTrackFitter(std::move(directPropagator), logger.cloneWithSuffix("DirectFitter"));
+    DirectKalmanFitter directTrackFitter(std::move(directPropagator), logger.cloneWithSuffix("DirectFitter"));
 
     // build the fitter function. owns the fitter object.
     auto fitterFunction = std::make_shared<ConfiguredKalmanFitter>(std::move(trackFitter), std::move(directTrackFitter), geo);
@@ -181,3 +174,5 @@ std::shared_ptr<ActsExamples::ConfiguredFitter> ActsExamples::makeKalmanFitterFu
 
     return fitterFunction;
 }
+
+}  // tdis namespace

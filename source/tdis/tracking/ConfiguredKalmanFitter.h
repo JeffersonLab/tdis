@@ -27,7 +27,7 @@
 #include "ActsExamples/EventData/Track.hpp"
 #include "RefittingCalibrator.h"
 #include "ConfiguredFitter.hpp"
-namespace ActsExamples {
+namespace tdis {
 class MeasurementCalibration;
 
 /**
@@ -64,7 +64,7 @@ struct ConfiguredKalmanFitter final : public ConfiguredFitter
              const ActsExamples::TrackParameters& initialParameters,
              const GeneralFitterOptions& options,
              const ActsExamples::MeasurementCalibratorAdapter& calibrator,
-             ActsExamples::TrackContainer& tracks) const override;
+             tdis::TrackContainer& tracks) const override;
 
     TrackFitterResult
   operator()(const std::vector<Acts::SourceLink>& sourceLinks,
@@ -72,7 +72,7 @@ struct ConfiguredKalmanFitter final : public ConfiguredFitter
              const GeneralFitterOptions& options,
              const RefittingCalibrator& calibrator,
              const std::vector<const Acts::Surface*>& surfaceSequence,
-             ActsExamples::TrackContainer& tracks) const override;
+             tdis::TrackContainer& tracks) const override;
 };
 
 /**

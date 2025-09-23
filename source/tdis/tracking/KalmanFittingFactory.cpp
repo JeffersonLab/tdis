@@ -96,17 +96,6 @@ void KalmanFittingFactory::Configure() {
     // ---------- ACTS logger ----------
     auto lvl = strToActsLevel(m_acts_level());
     m_acts_logger = Acts::getDefaultLogger("KF", lvl);
-
-
-    m_fitter = ActsExamples::makeKalmanFitterFunction(
-        m_acts_geo_svc->GetTrackingGeometry(),
-        magneticField,
-        true, // multipleScattering
-        true, // energyLoss
-        0.0, // reverseFilteringMomThreshold
-        Acts::FreeToBoundCorrection(), // FreeToBoundCorrection
-        *m_acts_logger   // logger
-    );
 }
 
 void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
@@ -124,7 +113,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     Acts::MagneticFieldContext magContext;
     Acts::CalibrationContext calibContext;
 
-    ActsExamples::ConfiguredFitter::GeneralFitterOptions general_fitter_options = {
+    tdis::ConfiguredFitter::GeneralFitterOptions general_fitter_options = {
         .geoContext = geoContext,
         .magFieldContext = magContext,
         .calibrationContext = calibContext,
@@ -148,7 +137,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     Acts::TrackContainer tracks(trackContainer, trackStateContainer);
 
 
-    // KalmanFitter extensions with default components
+    // KalmanFitter extensions with default componentss
     Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> extensions;
 
     // KalmanFitter options
@@ -181,7 +170,8 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         for (const auto& mcHit : mcTrack.getHits()) {
             for (size_t i = 0; i < measurements.size(); ++i) {
                 const auto& measurement = measurements[i];
-                if (!measurement.getHits().empty() && measurement.getHits().at(0).getRawHit().id() == mcHit.id()) { // Compare ids
+                if (!measurement.getHits().empty() && measurement.getHits().at(0).getRawHit().id() == mcHit.id())
+                    { // Compare ids
 
 
                     auto x = (double)mcHit.getTruePosition().x;
@@ -308,27 +298,28 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
 
         if (!result.ok()) {
             m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
+
         }
         // TODO we should end here
     }
 
-    // Store results
-    ActsExamples::ConstTrackContainer constTracks{
-        std::make_shared<Acts::ConstVectorTrackContainer>(std::move(*trackContainer)),
-        std::make_shared<Acts::ConstVectorMultiTrajectory>(std::move(*trackStateContainer))
-    };
-    // ======== BEGIN EDM4eic Conversion ======== //
-    constexpr std::array<std::pair<Acts::BoundIndices, double>, 6> edm4eic_indexed_units{{
-        {Acts::eBoundLoc0, Acts::UnitConstants::mm},
-        {Acts::eBoundLoc1, Acts::UnitConstants::mm},
-        {Acts::eBoundPhi, 1.},
-        {Acts::eBoundTheta, 1.},
-        {Acts::eBoundQOverP, 1./Acts::UnitConstants::GeV},
-        {Acts::eBoundTime, Acts::UnitConstants::ns}
-    }};
+    // // Store results
+    // ActsExamples::ConstTrackContainer constTracks{
+    //     std::make_shared<Acts::ConstPodioTrackContainer>(std::move(*trackContainer)),
+    //     std::make_shared<Acts::ConstPodioTrackStateContainer>(std::move(*trackStateContainer))
+    // };
+    // // ======== BEGIN EDM4eic Conversion ======== //
+    // constexpr std::array<std::pair<Acts::BoundIndices, double>, 6> edm4eic_indexed_units{{
+    //     {Acts::eBoundLoc0, Acts::UnitConstants::mm},
+    //     {Acts::eBoundLoc1, Acts::UnitConstants::mm},
+    //     {Acts::eBoundPhi, 1.},
+    //     {Acts::eBoundTheta, 1.},
+    //     {Acts::eBoundQOverP, 1./Acts::UnitConstants::GeV},
+    //     {Acts::eBoundTime, Acts::UnitConstants::ns}
+    // }};
 
     // Loop over ACTS tracks
-    for (const auto& track : constTracks) {
+    //for (const auto& track : constTracks) {
         // auto trajectory = m_edm_trajectories()->create();
         // auto edmTrackParams = m_edm_track_params()->create();
         // auto edmTrack = m_edm_tracks()->create();
@@ -374,7 +365,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         // edmTrack.ndf(track.nDoF());
         // edmTrack.charge(track.qOverP() > 0 ? 1 : -1);
         // edmTrack.pdg(track.particleHypothesis().absolutePdg());
-    }
+    //}
     // ======== END EDM4eic Conversion ======== //
 }
 

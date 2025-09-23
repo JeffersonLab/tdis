@@ -16,12 +16,8 @@
 #include "Acts/Surfaces/Surface.hpp"
 #include "Acts/Utilities/CalibrationContext.hpp"
 
-namespace Acts {
-  class ConstVectorMultiTrajectory;
-  class VectorMultiTrajectory;
-} // namespace Acts
 
-namespace ActsExamples {
+namespace tdis {
   struct RefittingCalibrator
   {
     using Proxy = Acts::VectorMultiTrajectory::TrackStateProxy;

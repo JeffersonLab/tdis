@@ -3,7 +3,19 @@
 // Subject to the terms in the LICENSE file found in the top-level directory.
 //
 
-#ifndef TDIS_ACTS_ROOT_TRACKINGTYPES_H
-#define TDIS_ACTS_ROOT_TRACKINGTYPES_H
+#pragma once
 
-#endif //TDIS_ACTS_ROOT_TRACKINGTYPES_H
+namespace Acts {
+    class SympyStepper;
+}
+
+namespace tdis {
+    using Stepper = Acts::SympyStepper;
+    using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
+    using KalmanFitter = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
+    using DirectPropagator = Acts::Propagator<Stepper, Acts::DirectNavigator>;
+    using DirectKalmanFitter = Acts::KalmanFitter<DirectPropagator, Acts::VectorMultiTrajectory>;
+
+    using TrackContainer = Acts::TrackContainer<Acts::MutablePodioTrackContainer, Acts::MutablePodioTrackStateContainer>;
+    using TrackFitterResult = Acts::Result<TrackContainer::TrackProxy>;
+}

@@ -50,7 +50,7 @@ namespace tdis::tracking {
         Parameter<std::string> m_csv_out{this, "csv_file", "kf_fit_summary.csv",  "File to append MC-vs-reco track summary"};
         Parameter<std::string> m_acts_level{this, "acts_level", "INFO", "ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)"};
 
-        std::shared_ptr<ActsExamples::ConfiguredFitter> m_fitter ;
+        std::shared_ptr<tdis::ConfiguredFitter> m_fitter ;
 
         KalmanFittingFactory();
         void Configure();

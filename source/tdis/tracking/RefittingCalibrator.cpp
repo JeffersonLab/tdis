@@ -13,7 +13,7 @@
 #include <Acts/EventData/SourceLink.hpp>
 #include <Acts/Utilities/CalibrationContext.hpp>
 
-namespace ActsExamples {
+namespace tdis {
 
 void RefittingCalibrator::calibrate(const Acts::GeometryContext& /*gctx*/,
                                     const Acts::CalibrationContext& /*cctx*/,
@@ -29,12 +29,9 @@ void RefittingCalibrator::calibrate(const Acts::GeometryContext& /*gctx*/,
   Acts::visit_measurement(sl.state.calibratedSize(), [&](auto N) {
     using namespace Acts;
     constexpr int Size = decltype(N)::value;
-
     trackState.allocateCalibrated(Size);
-    trackState.template calibrated<Size>() =
-        sl.state.template calibrated<Size>();
-    trackState.template calibratedCovariance<Size>() =
-        sl.state.template calibratedCovariance<Size>();
+    trackState.template calibrated<Size>() = sl.state.template calibrated<Size>();
+    trackState.template calibratedCovariance<Size>() = sl.state.template calibratedCovariance<Size>();
   });
 
   // TODO 41 trackState.setBoundSubspaceIndicses(sl.state.boundSubspaceIndices());

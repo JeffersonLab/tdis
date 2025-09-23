@@ -1,33 +1,37 @@
 #pragma once
 
-#include <functional>
-
 #include <Acts/EventData/SourceLink.hpp>
-#include <Acts/EventData/TrackParameters.hpp>
-#include <Acts/EventData/VectorMultiTrajectory.hpp>
-#include <Acts/EventData/VectorTrackContainer.hpp>
+// #include <Acts/EventData/TrackParameters.hpp>
+// #include <Acts/EventData/VectorMultiTrajectory.hpp>
+// #include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/Geometry/GeometryContext.hpp>
 #include <Acts/Geometry/TrackingGeometry.hpp>
 #include <Acts/MagneticField/MagneticFieldContext.hpp>
 #include <Acts/MagneticField/MagneticFieldProvider.hpp>
+#include <Acts/Plugins/Podio/PodioTrackContainer.hpp>
+#include <Acts/Plugins/Podio/PodioTrackStateContainer.hpp>
 #include <Acts/Propagator/Propagator.hpp>
 #include <Acts/TrackFitting/BetheHeitlerApprox.hpp>
 #include <Acts/TrackFitting/GsfOptions.hpp>
 #include <Acts/Utilities/CalibrationContext.hpp>
-#include <ActsExamples/EventData/MeasurementCalibration.hpp>
 #include <ActsExamples/EventData/Measurement.hpp>
-
+#include <ActsExamples/EventData/MeasurementCalibration.hpp>
 #include <ActsExamples/EventData/Track.hpp>
+#include <functional>
+
+#include "TrackingTypes.h"
+
 #include "RefittingCalibrator.h"
 
-namespace ActsExamples {
+namespace tdis {
+
+
 
 /// Fit function that takes the above parameters and runs a fit
 /// @note This is separated into a virtual interface to keep compilation units
 /// small.
 class ConfiguredFitter {
  public:
-  using TrackFitterResult = Acts::Result<TrackContainer::TrackProxy>;
 
   struct GeneralFitterOptions {
     std::reference_wrapper<const Acts::GeometryContext> geoContext;
@@ -41,13 +45,13 @@ class ConfiguredFitter {
   virtual ~ConfiguredFitter() = default;
 
   virtual TrackFitterResult operator()(const std::vector<Acts::SourceLink>&,
-                                       const TrackParameters&,
+                                       const Acts::GenericBoundTrackParameters<Acts::ParticleHypothesis>&,
                                        const GeneralFitterOptions&,
                                        const ActsExamples::MeasurementCalibratorAdapter&,
                                        TrackContainer&) const = 0;
 
   virtual TrackFitterResult operator()(const std::vector<Acts::SourceLink>&,
-                                       const TrackParameters&,
+                                       const Acts::GenericBoundTrackParameters<Acts::ParticleHypothesis>&,
                                        const GeneralFitterOptions&,
                                        const RefittingCalibrator&,
                                        const std::vector<const Acts::Surface*>&,
@@ -86,12 +90,14 @@ enum class MixtureReductionAlgorithm { weightCut, KLDistance };
 /// in a mixture
 /// @param logger a logger instance
 std::shared_ptr<ConfiguredFitter> makeGsfFitterFunction(
-    std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
-    std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
-    BetheHeitlerApprox betheHeitlerApprox, std::size_t maxComponents,
-    double weightCutoff, Acts::ComponentMergeMethod componentMergeMethod,
-    MixtureReductionAlgorithm mixtureReductionAlgorithm,
-    const Acts::Logger& logger);
+        std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
+        std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
+        BetheHeitlerApprox betheHeitlerApprox,
+        std::size_t maxComponents,
+        double weightCutoff, Acts::ComponentMergeMethod componentMergeMethod,
+        MixtureReductionAlgorithm mixtureReductionAlgorithm,
+        const Acts::Logger& logger
+    );
 
 /// Makes a fitter function object for the Global Chi Square Fitter (GX2F)
 ///
@@ -104,13 +110,14 @@ std::shared_ptr<ConfiguredFitter> makeGsfFitterFunction(
 /// @param relChi2changeCutOff Check for convergence (abort condition). Set to 0 to skip.
 /// @param logger a logger instance
 std::shared_ptr<ConfiguredFitter> makeGlobalChiSquareFitterFunction(
-    std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
-    std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
-    bool multipleScattering = true, bool energyLoss = true,
-    Acts::FreeToBoundCorrection freeToBoundCorrection =
-        Acts::FreeToBoundCorrection(),
-    std::size_t nUpdateMax = 5, double relChi2changeCutOff = 1e-7,
-    const Acts::Logger& logger = *Acts::getDefaultLogger("Gx2f",
-                                                         Acts::Logging::INFO));
+        std::shared_ptr<const Acts::TrackingGeometry> trackingGeometry,
+        std::shared_ptr<const Acts::MagneticFieldProvider> magneticField,
+        bool multipleScattering = true,
+        bool energyLoss = true,
+        Acts::FreeToBoundCorrection freeToBoundCorrection = Acts::FreeToBoundCorrection(),
+        std::size_t nUpdateMax = 5,
+        double relChi2changeCutOff = 1e-7,
+        const Acts::Logger& logger = *Acts::getDefaultLogger("Gx2f", Acts::Logging::INFO)
+    );
 
 }  // namespace ActsExamples
