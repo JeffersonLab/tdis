@@ -1,41 +1,53 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2022 Whitney Armstrong, Wouter Deconinck, Dmitry Romanov, Shujie Li
 
-#include "CKFTracking.h"
+#include "../CKFTracking.h"
 
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/Definitions/TrackParametrization.hpp>
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/EventData/GenericBoundTrackParameters.hpp>
+#if Acts_VERSION_MAJOR < 36
+#include <Acts/EventData/Measurement.hpp>
+#endif
+#include <Acts/EventData/MultiTrajectory.hpp>
+#include <Acts/EventData/ParticleHypothesis.hpp>
+#if Acts_VERSION_MAJOR >= 32
+#include "Acts/EventData/ProxyAccessor.hpp"
+#endif
 #include <Acts/EventData/SourceLink.hpp>
 #include <Acts/EventData/TrackContainer.hpp>
 #include <Acts/EventData/TrackProxy.hpp>
 #include <Acts/EventData/VectorMultiTrajectory.hpp>
 #include <Acts/EventData/VectorTrackContainer.hpp>
 #include <Acts/Geometry/GeometryIdentifier.hpp>
+#if Acts_VERSION_MAJOR >= 34
+#include "Acts/Propagator/AbortList.hpp"
 #include "Acts/Propagator/EigenStepper.hpp"
 #include "Acts/Propagator/MaterialInteractor.hpp"
 #include "Acts/Propagator/Navigator.hpp"
+#endif
 #include <Acts/Propagator/Propagator.hpp>
+#if Acts_VERSION_MAJOR >= 34
 #include "Acts/Propagator/StandardAborters.hpp"
-
+#endif
 #include <Acts/Surfaces/PerigeeSurface.hpp>
 #include <Acts/Surfaces/Surface.hpp>
 #include <Acts/TrackFitting/GainMatrixSmoother.hpp>
 #include <Acts/TrackFitting/GainMatrixUpdater.hpp>
 #include <Acts/Utilities/Logger.hpp>
-
+#if Acts_VERSION_MAJOR >= 34
 #include "Acts/Utilities/TrackHelpers.hpp"
-
+#endif
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 #include <ActsExamples/EventData/Measurement.hpp>
 #include <ActsExamples/EventData/MeasurementCalibration.hpp>
 #include <ActsExamples/EventData/Track.hpp>
-#include <podio_model/Cov3f.h>
-#include <podio_model/Cov6f.h>
-#include <podio_model/Measurement2DCollection.h>
-#include <podio_model/TrackParametersCollection.h>
-#include <podio_model/Vector2f.h>
+#include <edm4eic/Cov3f.h>
+#include <edm4eic/Cov6f.h>
+#include <edm4eic/Measurement2DCollection.h>
+#include <edm4eic/TrackParametersCollection.h>
+#include <edm4hep/Vector2f.h>
 #include <fmt/core.h>
 #include <Eigen/Core>
 #include <array>
@@ -46,6 +58,8 @@
 #include <optional>
 #include <utility>
 
+#include "ActsGeometryProvider.h"
+#include "DD4hepBField.h"
 #include "extensions/spdlog/SpdlogFormatters.h" // IWYU pragma: keep
 #include "extensions/spdlog/SpdlogToActs.h"
 
@@ -95,8 +109,8 @@ namespace eicrecon {
         std::vector<ActsExamples::Trajectories*>,
         std::vector<ActsExamples::ConstTrackContainer*>
     >
-    CKFTracking::process(const edm4eic::Measurement2DCollection& meas2Ds,
-                         const edm4eic::TrackParametersCollection &init_trk_params) {
+    CKFTracking::process(const tdis::Measurement2DCollection& meas2Ds,
+                         const tdis::TrackParametersCollection &init_trk_params) {
 
 
         // create sourcelink and measurement containers
@@ -307,8 +321,11 @@ namespace eicrecon {
         auto& constTracks = *(constTracks_v.front());
 
         // Seed number column accessor
-
+#if Acts_VERSION_MAJOR >= 32
         const Acts::ConstProxyAccessor<unsigned int> constSeedNumber("seed");
+#else
+        const Acts::ConstTrackAccessor<unsigned int> constSeedNumber("seed");
+#endif
 
         // Prepare the output data with MultiTrajectory, per seed
         std::vector<ActsExamples::Trajectories*> acts_trajectories;

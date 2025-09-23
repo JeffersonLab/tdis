@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "../tracking/RefittingCalibrator.h"
 #include "Acts/Definitions/Direction.hpp"
 #include "Acts/Definitions/TrackParametrization.hpp"
 #include "Acts/EventData/MultiTrajectory.hpp"
@@ -26,10 +27,7 @@
 #include "ActsExamples/EventData/IndexSourceLink.hpp"
 #include "ActsExamples/EventData/MeasurementCalibration.hpp"
 #include "ActsExamples/EventData/Track.hpp"
-#include "RefittingCalibrator.h"
 #include "ConfiguredFitter.hpp"
-
-
 
 namespace tdis {
 

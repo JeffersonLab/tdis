@@ -29,8 +29,8 @@ options :
 
 components:
 
-  edm4hep::Vector4f:
-    Description: "Generic vector for storing classical 4D coordinates in memory. Four momentum helper functions are in edm4hep::utils"
+  tdis::Vector4f:
+    Description: "Generic vector for storing classical 4D coordinates in memory. Four momentum helper functions are in tdis::utils"
     Members:
       - float x
       - float y
@@ -53,7 +53,7 @@ components:
             return *( &x + i ) ; }\n
         "
 
-  edm4hep::Vector3f:
+  tdis::Vector3f:
     Members:
       - float x
       - float y
@@ -74,7 +74,7 @@ components:
           return *( &x + i ) ; }\n
         "
 
-  edm4hep::Vector2f:
+  tdis::Vector2f:
     Members:
       - float a
       - float b
@@ -93,7 +93,7 @@ components:
         return *( &a + i ) ; }\n
       "
 
-  edm4eic::CovDiag3f:
+  tdis::CovDiag3f:
     Members:
       - float xx
       - float yy
@@ -106,7 +106,7 @@ components:
         float operator()(unsigned i, unsigned j) const {return (i == j) ? *(&xx + i) : 0.;}\n
         "
 
-  edm4eic::Cov2f:
+  tdis::Cov2f:
     Members:
       - float xx
       - float yy
@@ -128,7 +128,7 @@ components:
         }\n
       "
 
-  edm4eic::Cov3f:
+  tdis::Cov3f:
     Members:
       - float xx
       - float yy
@@ -154,7 +154,7 @@ components:
         }\n
       "
 
-  edm4eic::Cov4f:
+  tdis::Cov4f:
     Members:
       - float xx
       - float yy
@@ -195,7 +195,7 @@ components:
         }\n
       "
 
-  edm4eic::Cov6f:
+  tdis::Cov6f:
     Members:
       - std::array<float, 21> covariance  // 6d triangular packed covariance matrix
     ExtraCode:
@@ -217,31 +217,31 @@ components:
       "
 
   ## A point along a track
-  edm4eic::TrackPoint:
+  tdis::TrackPoint:
     Members:
       - uint64_t          surface         // Surface track was propagated to (possibly multiple per detector)
       - uint32_t          system          // Detector system track was propagated to
-      - edm4hep::Vector3f position        // Position of the trajectory point [mm]
-      - edm4eic::Cov3f    positionError   // Error on the position
-      - edm4hep::Vector3f momentum        // 3-momentum at the point [GeV]
-      - edm4eic::Cov3f    momentumError   // Error on the 3-momentum
+      - tdis::Vector3f position        // Position of the trajectory point [mm]
+      - tdis::Cov3f    positionError   // Error on the position
+      - tdis::Vector3f momentum        // 3-momentum at the point [GeV]
+      - tdis::Cov3f    momentumError   // Error on the 3-momentum
       - float             time            // Time at this point [ns]
       - float             timeError       // Error on the time at this point
       - float             theta           // polar direction of the track at the surface [rad]
       - float             phi             // azimuthal direction of the track at the surface [rad]
-      - edm4eic::Cov2f    directionError  // Error on the polar and azimuthal angles
+      - tdis::Cov2f    directionError  // Error on the polar and azimuthal angles
       - float             pathlength      // Pathlength from the origin to this point
       - float             pathlengthError // Error on the pathlength
 
   ## PID hypothesis from Cherenkov detectors
-  edm4eic::CherenkovParticleIDHypothesis:
+  tdis::CherenkovParticleIDHypothesis:
     Members:
       - int32_t           PDG             // PDG code
       - float             npe             // Overall photoelectron count
       - float             weight          // Weight of this hypothesis, such as likelihood, moment, etc.
 
   ## Representation of surfaces, including dynamic perigee surfaces (identical to ActsPodioEdm::Surface)
-  edm4eic::Surface:
+  tdis::Surface:
     Members:
       - int surfaceType                   // Cone = 0, Cylinder = 1, Disc = 2, Perigee = 3, Plane = 4, Straw = 5, Curvilinear = 6, Other = 7
       - int boundsType                    // eCone = 0, eCylinder = 1, eDiamond = 2, eDisc = 3, eEllipse = 4, eLine = 5, eRectangle = 6, eTrapezoid = 7, eTriangle = 8, eDiscTrapezoid = 9, eConvexPolygon = 10, eAnnulus = 11, eBoundless = 12, eOther = 13
@@ -289,15 +289,15 @@ datatypes :
       - int pad                           // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
       - int plane                         // - Plane(id of z plane from 0 upstream  to 9 downstream)
       - double zToGem                     // - ZtoGEM (m)
-      - edm4hep::Vector3f  truePosition   // - True hit x,y,z info (quiet_NaN() if not provided)
+      - tdis::Vector3f  truePosition   // - True hit x,y,z info (quiet_NaN() if not provided)
 
-  edm4eic::TrackerHit:
+  tdis::TrackerHit:
     Description: "Tracker hit (reconstructed from Raw)"
     Author: "W. Armstrong, S. Joosten"
     Members:
       - uint64_t           cellID            // The detector specific (geometrical) cell id.
-      - edm4hep::Vector3f  position          // Hit (cell) position [mm]
-      - edm4eic::CovDiag3f positionError     // Covariance Matrix
+      - tdis::Vector3f  position          // Hit (cell) position [mm]
+      - tdis::CovDiag3f positionError     // Covariance Matrix
       - float              time              // Hit time [ns]
       - float              timeError         // Error on the time
       - float              edep              // Energy deposit in this hit [GeV]
@@ -305,30 +305,30 @@ datatypes :
     OneToOneRelations:
       - tdis::DigitizedMtpcMcHit rawHit       // Related raw tracker hit
 
-  edm4eic::Measurement2D:
+  tdis::Measurement2D:
     Description: "2D measurement (on an arbitrary surface)"
     Author: "W. Deconinck"
     Members:
       - uint64_t          surface           // Surface for bound coordinates (geometryID)
-      - edm4hep::Vector2f loc               // 2D location on surface
+      - tdis::Vector2f loc               // 2D location on surface
       - float             time              // Measurement time
-      - edm4eic::Cov3f    covariance        // Covariance on location and time
+      - tdis::Cov3f    covariance           // Covariance on location and time
     VectorMembers:
       - float             weights           // Weight for each of the hits, mirrors hits array
     OneToManyRelations:
-      - edm4eic::TrackerHit hits            // Hits in this measurement (single or clustered)
+      - tdis::TrackerHit hits               // Hits in this measurement (single or clustered)
 
-  edm4eic::TrackSeed:
+  tdis::TrackSeed:
     Description: "Seed info from the realistic seed finder"
     Author: "S. Li, B. Schmookler, J. Osborn"
     Members:
-      - edm4hep::Vector3f         perigee   // Vector for the perigee (line surface)
+      - tdis::Vector3f      perigee   // Vector for the perigee (line surface)
     OneToManyRelations:
-      - edm4eic::TrackerHit       hits      // Tracker hits triplet for seeding
+      - tdis::TrackerHit       hits      // Tracker hits triplet for seeding
     OneToOneRelations:
-      - edm4eic::TrackParameters  params    // Initial track parameters
+      - tdis::TrackParameters  params    // Initial track parameters
 
-  edm4eic::Trajectory:
+  tdis::Trajectory:
     Description: "Raw trajectory from the tracking algorithm. What is called hit here is 2d measurement indeed."
     Author: "S. Joosten, S. Li"
     Members:
@@ -342,35 +342,35 @@ datatypes :
       - float             measurementChi2   // Chi2 for each of the measurements
       - float             outlierChi2       // Chi2 for each of the outliers
     OneToManyRelations:
-      - edm4eic::TrackParameters trackParameters            // Associated track parameters, if any
-      - edm4eic::Measurement2D measurements_deprecated      // Measurements that were used for this track. Will move this to the edm4eic::Track
-      - edm4eic::Measurement2D outliers_deprecated          // Measurements that were not used for this track. Will move this to the edm4eic::Track
+      - tdis::TrackParameters trackParameters            // Associated track parameters, if any
+      - tdis::Measurement2D measurements_deprecated      // Measurements that were used for this track. Will move this to the tdis::Track
+      - tdis::Measurement2D outliers_deprecated          // Measurements that were not used for this track. Will move this to the tdis::Track
     OneToOneRelations:
-      - edm4eic::TrackSeed      seed      // Corresponding track seed
+      - tdis::TrackSeed      seed      // Corresponding track seed
 
-  edm4eic::TrackParameters:
+  tdis::TrackParameters:
     Description: "ACTS Bound Track parameters"
     Author: "W. Armstrong, S. Joosten, J. Osborn"
     Members:
       - int32_t              type              // Type of track parameters (-1/seed, 0/head, ...)
       - uint64_t             surface           // Surface for bound parameters (geometryID)
-      - edm4hep::Vector2f    loc               // 2D location on surface
+      - tdis::Vector2f    loc               // 2D location on surface
       - float                theta             // Track polar angle [rad]
       - float                phi               // Track azimuthal angle [rad]
       - float                qOverP            // [e/GeV]
       - float                time              // Track time [ns]
       - int32_t              pdg               // pdg pid for these parameters
-      - edm4eic::Cov6f       covariance        // Full covariance in basis [l0,l1,theta,phi,q/p,t]
+      - tdis::Cov6f          covariance        // Full covariance in basis [l0,l1,theta,phi,q/p,t]
 
 
-  edm4eic::Track:
+  tdis::Track:
     Description: "Track information at the vertex"
     Author: "S. Joosten, J. Osborn"
     Members:
       - int32_t            type                           // Flag that defines the type of track
-      - edm4hep::Vector3f  position                       // Track 3-position at the vertex
-      - edm4hep::Vector3f  momentum                       // Track 3-momentum at the vertex [GeV]
-      - edm4eic::Cov6f     positionMomentumCovariance     // Covariance matrix in basis [x,y,z,px,py,pz]
+      - tdis::Vector3f  position                       // Track 3-position at the vertex
+      - tdis::Vector3f  momentum                       // Track 3-momentum at the vertex [GeV]
+      - tdis::Cov6f     positionMomentumCovariance     // Covariance matrix in basis [x,y,z,px,py,pz]
       - float              time                           // Track time at the vertex [ns]
       - float              timeError                      // Error on the track vertex time
       - float              charge                         // Particle charge
@@ -378,18 +378,18 @@ datatypes :
       - uint32_t           ndf                            // Number of degrees of freedom
       - int32_t            pdg                            // PDG particle ID hypothesis
     OneToOneRelations:
-      - edm4eic::Trajectory                     trajectory      // Trajectory of this track
+      - tdis::Trajectory                     trajectory      // Trajectory of this track
     OneToManyRelations:
-      - edm4eic::Measurement2D measurements      // Measurements that were used for this track
-      - edm4eic::Track      tracks            // Tracks (segments) that have been combined to create this track
+      - tdis::Measurement2D measurements      // Measurements that were used for this track
+      - tdis::Track      tracks            // Tracks (segments) that have been combined to create this track
 
-  edm4eic::TrackSegment:
+  tdis::TrackSegment:
     Description: "A track segment defined by one or more points along a track."
     Author: "S. Joosten"
     Members:
       - float             length            // Pathlength from the first to the last point
       - float             lengthError       // Error on the segment length
     OneToOneRelations:
-      - edm4eic::Track    track             // Track used for this projection
+      - tdis::Track    track             // Track used for this projection
     VectorMembers:
-      - edm4eic::TrackPoint points          // Points where the track parameters were evaluated
+      - tdis::TrackPoint points          // Points where the track parameters were evaluated

@@ -15,8 +15,8 @@
 namespace tdis::tracking {
 
     struct Measurement2DFactory : public JOmniFactory<Measurement2DFactory> {
-        PodioInput<edm4eic::TrackerHit> m_mc_hits_in {this, {"TrackerHit"}};
-        PodioOutput<edm4eic::Measurement2D> m_tracker_hits_out {this, "Measurement2D"};
+        PodioInput<tdis::TrackerHit> m_mc_hits_in {this, {"TrackerHit"}};
+        PodioOutput<tdis::Measurement2D> m_tracker_hits_out {this, "Measurement2D"};
         Service<ActsGeometryService> m_service_geometry{this};
         Parameter<bool> m_cfg_use_true_pos{this, "acts:use_true_position", true,"Use true hits xyz instead of digitized one"};
 
@@ -31,7 +31,7 @@ namespace tdis::tracking {
             using namespace Acts::UnitLiterals;
 
 
-            auto measurements = std::make_unique<edm4eic::Measurement2DCollection>();
+            auto measurements = std::make_unique<tdis::Measurement2DCollection>();
             auto plane_positions = m_service_geometry->GetPlanePositions();
 
 

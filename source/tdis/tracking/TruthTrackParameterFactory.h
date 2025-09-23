@@ -20,7 +20,7 @@ namespace tdis::tracking {
 
     struct TruthTrackParameterFactory : public JOmniFactory<TruthTrackParameterFactory> {
         PodioInput<tdis::DigitizedMtpcMcTrack> m_mc_tracks_in {this, {"DigitizedMtpcMcTrack"}};
-        PodioOutput<edm4eic::TrackParameters> m_trackers_out {this, "TruthTrackInitParameters"};
+        PodioOutput<tdis::TrackParameters> m_trackers_out {this, "TruthTrackInitParameters"};
         Service<ActsGeometryService> m_service_geometry{this};
         Service<services::LogService> m_service_log{this};
 
@@ -54,7 +54,7 @@ namespace tdis::tracking {
             using namespace Acts::UnitLiterals;
 
 
-            auto track_parameters = std::make_unique<edm4eic::TrackParametersCollection>();
+            auto track_parameters = std::make_unique<tdis::TrackParametersCollection>();
             auto plane_positions = m_service_geometry->GetPlanePositions();
 
 
@@ -114,7 +114,7 @@ namespace tdis::tracking {
                 Acts::Vector2 localpos = local.value();
                 double charge = 1;  // TODO ??? Proton?
 
-                // Insert into edm4eic::TrackParameters, which uses numerical values in its specified units
+                // Insert into tdis::TrackParameters, which uses numerical values in its specified units
                 auto track_parameter = track_parameters->create();
                 track_parameter.setType(-1); // type --> seed(-1)
                 track_parameter.setLoc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))}); // 2d location on surface [mm]
@@ -122,7 +122,7 @@ namespace tdis::tracking {
                 track_parameter.setTheta(theta); // theta [rad]
                 track_parameter.setQOverP(charge / (pinit)); // Q/p [e/GeV]
                 track_parameter.setTime(mc_track.getHits().at(0).getTime()); // time [ns]
-                edm4eic::Cov6f cov;
+                tdis::Cov6f cov;
                 cov(0,0) = 1.0; // loc0
                 cov(1,1) = 1.0; // loc1
                 cov(2,2) = 0.05; // phi

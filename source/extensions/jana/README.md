@@ -6,15 +6,15 @@ flowchart TB
   classDef alg fill:#f96;
   subgraph Simulation output
     direction LR
-    tracker_endcap_collections(Endcap trk:<br />TrackerEndcapHits1<br/>TrackerEndcapHits2<br/>TrackerEndcapHits3<br/><strong>edm4hep::SimHit</strong>)
-    tracker_barrel_collections(Endcap trk:<br />TrackerBarrelHits1<br/>TrackerBarrelHits2<br/>TrackerBarrelHits3<br/><strong>edm4hep::SimHit</strong>)
+    tracker_endcap_collections(Endcap trk:<br />TrackerEndcapHits1<br/>TrackerEndcapHits2<br/>TrackerEndcapHits3<br/><strong>tdis::SimHit</strong>)
+    tracker_barrel_collections(Endcap trk:<br />TrackerBarrelHits1<br/>TrackerBarrelHits2<br/>TrackerBarrelHits3<br/><strong>tdis::SimHit</strong>)
   end
 
   tracker_barrel_collections --> TrackerDigi[TrackerDigi]:::alg
-  TrackerDigi --> TrackerBarrelRawHits(TrackerBarrelRawHits<br/><strong>edm4eic::RawTrackingHit</strong>)
+  TrackerDigi --> TrackerBarrelRawHits(TrackerBarrelRawHits<br/><strong>tdis::RawTrackingHit</strong>)
 
   tracker_endcap_collections --> TrackerDigi2[TrackerDigi]:::alg
-  TrackerDigi2 --> TrackerEndcapRawHits(TrackerEndcapRawHits<br/><strong>edm4eic::RawTrackingHit</strong>)
+  TrackerDigi2 --> TrackerEndcapRawHits(TrackerEndcapRawHits<br/><strong>tdis::RawTrackingHit</strong>)
 
   TrackerSourceLinker[SomeReconstruction]:::alg
 
@@ -48,7 +48,7 @@ flowchart TB
   tracker_barrel_collections(Endcap trk:<br />TrackerBarrelHits1<br/>TrackerBarrelHits2<br/>TrackerBarrelHits3<br/><strong>SimHit</strong>)
 
   tracker_barrel_collections --> TrackerDigi[TrackerDigi<br /><strong>SimHit</strong> to <strong>RawTrackerHit</strong>]:::alg
-  TrackerDigi --> TrackerBarrelRawHits(TrackerBarrelRawHits<br/><strong>edm4eic::RawTrackingHit</strong>)
+  TrackerDigi --> TrackerBarrelRawHits(TrackerBarrelRawHits<br/><strong>tdis::RawTrackingHit</strong>)
 
   TrackerSourceLinker[SomeReconstruction<br /><strong>RawTrackerHit</strong> to <strong>RecoParticle</strong>]:::alg
   TrackerBarrelRawHits --> TrackerSourceLinker
@@ -106,7 +106,7 @@ void eicrecon::SiliconTrackerDigi_factory::Process(const std::shared_ptr<const J
 
     // Collect all hits from input sources
     for(auto input_tag: input_tags) {
-        auto simHits = event->Get<edm4hep::SimTrackerHit>(input_tag);
+        auto simHits = event->Get<tdis::SimTrackerHit>(input_tag);
         // DO SOMETHING
     }
     //...

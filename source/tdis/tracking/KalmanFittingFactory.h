@@ -12,8 +12,8 @@
 #include <Acts/TrackFitting/KalmanFitter.hpp>
 #include <ActsExamples/EventData/Track.hpp>
 
+#include "../deprecated/ConfiguredFitter.hpp"
 #include "ActsGeometryService.h"
-#include "ConfiguredFitter.hpp"
 #include "podio_model/DigitizedMtpcMcHitCollection.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
@@ -34,13 +34,13 @@ namespace tdis::tracking {
         // KalmanFittingFactory.hpp
         PodioInput<tdis::DigitizedMtpcMcTrack> m_mc_tracks_input{this, {"DigitizedMtpcMcTrack"}};
         PodioInput<tdis::DigitizedMtpcMcHit> m_mc_hits_input{this, {"DigitizedMtpcMcHit"}};
-        PodioInput<edm4eic::TrackerHit> m_tracker_hits_input{this, {"TrackerHit"}};
-        PodioInput<edm4eic::Measurement2D> m_measurements_input{this, {"Measurement2D"}};
+        PodioInput<tdis::TrackerHit> m_tracker_hits_input{this, {"TrackerHit"}};
+        PodioInput<tdis::Measurement2D> m_measurements_input{this, {"Measurement2D"}};
 
         // Add EDM4eic outputs
-        PodioOutput<edm4eic::Trajectory> m_edm_trajectories{this};
-        PodioOutput<edm4eic::TrackParameters> m_edm_track_params{this};
-        PodioOutput<edm4eic::Track> m_edm_tracks{this};
+        PodioOutput<tdis::Trajectory> m_edm_trajectories{this};
+        PodioOutput<tdis::TrackParameters> m_edm_track_params{this};
+        PodioOutput<tdis::Track> m_edm_tracks{this};
 
         Service<ActsGeometryService> m_acts_geo_svc{this};
         Service<services::LogService> m_log_svc{this};
@@ -60,12 +60,12 @@ namespace tdis::tracking {
         std::shared_ptr<spdlog::logger> m_logger;
         std::shared_ptr<const Acts::Logger> m_acts_logger;
 
-        using Stepper = Acts::EigenStepper<>;
-        using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
-        using KF = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
+        // using Stepper = Acts::EigenStepper<>;
+        // using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
+        // using KF = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
 
-        std::shared_ptr<Propagator> m_propagator;
-        std::shared_ptr<KF> m_kalman_fitter;
+        std::shared_ptr<tdis::Propagator> m_propagator;
+        //std::shared_ptr<KF> m_kalman_fitter;
         std::ofstream m_csv;
     };
 

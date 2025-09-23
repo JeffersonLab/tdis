@@ -8,15 +8,8 @@
 
 #pragma once
 
-#include <spdlog/logger.h>
-
-#include <array>
 #include <memory>
-#include <vector>
-
-#include "Acts/Geometry/TrackingGeometry.hpp"
-#include "Acts/Utilities/BinUtility.hpp"
-#include "Acts/Utilities/BinningType.hpp"
+#include <spdlog/logger.h>
 #include "MtpcDetectorElement.hpp"
 
 namespace Acts {
@@ -27,14 +20,15 @@ namespace tdis::tracking {
 
 
 /** This geometry uses cylindrical surfaces with:
- *    - R (radius) of each cylinder - corresponding to each of mTPC ring center
- *    - The length of each cylinder in z direction equal to whole detector length
- *  This way the finding a point on a plane for ACTS Kalman filtering is easy in terms of Z coordinate
- *  Then each cylinder correspond to MtpcDetectorElement in detectorStore
+ *    - R (radius) of each cylinder - corresponding to each of mTPC ring centers
+ *    - The length of each cylinder in z direction equal to the whole detector length
+ *  This way the finding a point on a plane for ACTS Kalman filtering is straightforward in terms of Z coordinate
+ *  Then each cylinder corresponds to MtpcDetectorElement in detectorStore
  */
 std::unique_ptr<const Acts::TrackingGeometry> buildCylindricalDetector(
-        std::shared_ptr<spdlog::logger> log,
+        const std::shared_ptr<spdlog::logger>& log,
         const typename MtpcDetectorElement::ContextType& gctx,
-        std::unordered_map<uint32_t, std::shared_ptr<MtpcDetectorElement>>& surfaceStore);
+        std::unordered_map<uint32_t, std::shared_ptr<MtpcDetectorElement>>& surfaceStore
+    );
 
 }  // namespace ActsExamples::Telescope

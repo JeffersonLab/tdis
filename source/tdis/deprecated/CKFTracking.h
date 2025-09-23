@@ -68,8 +68,8 @@ namespace eicrecon {
             std::vector<ActsExamples::Trajectories*>,
             std::vector<ActsExamples::ConstTrackContainer*>
         >
-        process(const edm4eic::Measurement2DCollection& meas2Ds,
-                const edm4eic::TrackParametersCollection &init_trk_params);
+        process(const tdis::Measurement2DCollection& meas2Ds,
+                const tdis::TrackParametersCollection &init_trk_params);
 
     private:
         std::shared_ptr<spdlog::logger> m_log;

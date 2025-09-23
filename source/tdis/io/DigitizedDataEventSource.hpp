@@ -360,7 +360,7 @@ namespace tdis::io {
             podioHit.setPlane(  hit.plane );
             podioHit.setZToGem( hit.zToGem  * Acts::UnitConstants::m);
 
-            edm4hep::Vector3f true_pos = edm4hep::Vector3f{
+            tdis::Vector3f true_pos = tdis::Vector3f{
                 static_cast<float>(hit.true_x * Acts::UnitConstants::m),
                 static_cast<float>(hit.true_y * Acts::UnitConstants::m),
                 static_cast<float>(hit.true_z * Acts::UnitConstants::m)

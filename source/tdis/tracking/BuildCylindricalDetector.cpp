@@ -6,6 +6,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include "BuildCylindricalDetector.h"
+
+#include <spdlog/spdlog.h>  // Ensure SPDLog header is included
+
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Geometry/CylinderLayer.hpp>
@@ -25,9 +29,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <spdlog/spdlog.h>   // Ensure SPDLog header is included
-
-#include "BuildMtpcDetector.hpp"
 #include "MtpcDetectorElement.hpp"
 
 /**
@@ -41,12 +42,13 @@
  * @return                The resulting Acts::TrackingGeometry
  */
 std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDetector(
-    std::shared_ptr<spdlog::logger> log,
+    const std::shared_ptr<spdlog::logger>& log,
     const MtpcDetectorElement::ContextType& gctx,
     std::unordered_map<uint32_t, std::shared_ptr<MtpcDetectorElement>>& surfaceStore)
 {
     using namespace Acts;
     using namespace Acts::UnitLiterals;
+    namespace ActsUnits = Acts::UnitConstants;
 
     //
     // -- Start with a general initialization message
@@ -56,34 +58,33 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
               spdlog::level::to_string_view(log->level()));
 
     // Define Argon gas material properties at STP
-    double radiationLength   = 19.55_m;    // ~19.55 m in mm
-    double interactionLength = 70.0_m;     // ~70.0 m in mm
-    double atomicMass        = 39.948;     // Argon
-    double atomicNumber      = 18;         // Argon
-    double massDensity       = 1.66e-6_g / 1_mm3; // g/mm^3
+    float radiationLength   = 19.55 * ActsUnits::m;    // ~19.55 m in mm
+    float interactionLength = 70.0 * ActsUnits::m;     // ~70.0 m in mm
+    float atomicMass        = 39.948;              // Argon
+    float atomicNumber      = 18;                  // Argon
+    float massDensity       = 1.66e-6 * ActsUnits::g / 1 * ActsUnits::mm3; // g/mm^3
 
     log->debug("Constructing ArgonGas Material: RL={} mm, IL={} mm, A={}, Z={}, density={} g/mm^3",
                radiationLength, interactionLength, atomicMass, atomicNumber, massDensity);
 
     // Create Argon gas material
-    Material argonGas = Material::fromMassDensity(
-        radiationLength, interactionLength, atomicMass, atomicNumber, massDensity);
+    Material argonGas = Material::fromMassDensity(radiationLength, interactionLength, atomicMass, atomicNumber, massDensity);
 
     // --------------------
     // Geometry parameters
     // --------------------
-    double innerRadius     =  50_mm;   //  5 cm
-    double outerRadius     = 150_mm;   // 15 cm
-    double cylinderLength  = 550_mm;   // 55 cm total
+    double innerRadius     =  5 * ActsUnits::cm;   //  5 cm
+    double outerRadius     = 15 * ActsUnits::cm;   // 15 cm
+    double cylinderLength  = 55 * ActsUnits::cm;   // 55 cm total
     double halfLength      = cylinderLength / 2.0;
     int    numRings        = 21;       // 21 concentric rings
     double radialStep      = (outerRadius - innerRadius) / numRings;
 
     log->info("Building cylindrical mTPC geometry with:");
     log->info("  innerRadius = {} mm, outerRadius = {} mm, cylinderLength = {} mm",
-              innerRadius, outerRadius, cylinderLength);
+        innerRadius/ActsUnits::mm, outerRadius/ActsUnits::mm, cylinderLength/ActsUnits::mm);
     log->info("  halfLength  = {} mm, numRings = {}, radialStep = {} mm",
-              halfLength, numRings, radialStep);
+        halfLength/ActsUnits::mm, numRings/ActsUnits::mm, radialStep/ActsUnits::mm);
 
     // We store the final layers as generic Layer pointers
     std::vector<std::shared_ptr<const Layer>> cylinderLayers;

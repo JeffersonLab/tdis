@@ -4,17 +4,18 @@
 #include <Acts/Utilities/Helpers.hpp>
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
 
+#include "../deprecated/ConfiguredKalmanFitter.h"
+#include "Acts/Plugins/Podio/PodioTrackContainer.hpp"
+#include "Acts/Plugins/Podio/PodioTrackStateContainer.hpp"
+#include "Acts/Plugins/Podio/PodioUtil.hpp"
 #include "ActsLogHeplers.h"
-#include "ConfiguredKalmanFitter.h"
+#include "TrackingTypes.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
 #include "podio_model/Measurement2DCollection.h"
 #include "podio_model/TrackCollection.h"
 #include "podio_model/TrackParametersCollection.h"
 #include "podio_model/TrajectoryCollection.h"
-#include "Acts/Plugins/Podio/PodioTrackContainer.hpp"
-#include "Acts/Plugins/Podio/PodioTrackStateContainer.hpp"
-#include "Acts/Plugins/Podio/PodioUtil.hpp"
 
 namespace tdis::tracking {
 
@@ -78,9 +79,9 @@ void KalmanFittingFactory::Configure() {
     m_propagator = std::make_shared<Propagator>(stepper, std::move(navigator));
 
     // Initialize KalmanFitter
-    m_kalman_fitter = std::make_shared<KF>(*m_propagator);
+    //m_kalman_fitter = std::make_shared<KF>(*m_propagator);
 
-    m_logger = m_log_svc->logger("tracking/kf");
+    m_logger = m_log_svc->logger("tracking:kf");
 
 
 
@@ -276,30 +277,29 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         //            sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
         //);
         // 7) Run the Kalman fit => result
-        auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
-        if (!result.ok()) {
-            m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, 
-                            result.error().message());
-            continue;
-        } else {
-            // If you want to do anything with the resulting track proxy right now,
-            // you can retrieve it (but it's already in 'tracks'):
-            auto& trackProxy = result.value();
-            auto tip = trackProxy.tipIndex();
-            auto absMom = trackProxy.absoluteMomentum();
-            m_logger->info("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), absMom);
-            m_logger->info("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
-            m_logger->info("mcTrack.phi  = {} reco phi {}", mcTrack.getTheta(), trackProxy.phi());
-            m_logger->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
-
-            m_logger->debug("Successfully fitted track => track p {} in container",
-                            trackProxy.absoluteMomentum());
-        }
-
-        if (!result.ok()) {
-            m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
-
-        }
+        // auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
+        // if (!result.ok()) {
+        //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index,
+        //                     result.error().message());
+        //     continue;
+        // } else {
+        //     // If you want to do anything with the resulting track proxy right now,
+        //     // you can retrieve it (but it's already in 'tracks'):
+        //     auto& trackProxy = result.value();
+        //     auto tip = trackProxy.tipIndex();
+        //     auto absMom = trackProxy.absoluteMomentum();
+        //     m_logger->info("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), absMom);
+        //     m_logger->info("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
+        //     m_logger->info("mcTrack.phi  = {} reco phi {}", mcTrack.getTheta(), trackProxy.phi());
+        //     m_logger->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
+        //
+        //     m_logger->debug("Successfully fitted track => track p {} in container",
+        //                     trackProxy.absoluteMomentum());
+        // }
+        //
+        // if (!result.ok()) {
+        //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
+        // }
         // TODO we should end here
     }
 
@@ -334,7 +334,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
         //     edmTrackParams.qOverP(params[Acts::eBoundQOverP]);
         //     edmTrackParams.time(params[Acts::eBoundTime]);
         //
-        //     edm4eic::Cov6f cov;
+        //     tdis::Cov6f cov;
         //     for (size_t i=0; auto& [idx, scale] : edm4eic_indexed_units) {
         //         for (size_t j=0; auto& [jdx, jscale] : edm4eic_indexed_units) {
         //             cov(i,j) = track.covariance()(idx,jdx) * scale * jscale;

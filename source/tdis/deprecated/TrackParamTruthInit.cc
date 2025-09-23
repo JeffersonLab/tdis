@@ -2,40 +2,39 @@
 // Subject to the terms in the LICENSE file found in the top-level directory.
 //
 
-#include "TrackParamTruthInit.h"
+#include "../TrackParamTruthInit.h"
+
+#include <Evaluator/DD4hepUnits.h>
+#include <edm4eic/Cov6f.h>
+#include <edm4hep/Vector3d.h>
+#include <edm4hep/Vector3f.h>
+#include <fmt/core.h>
+#include <spdlog/common.h>
 
 #include <Acts/Definitions/Algebra.hpp>
 #include <Acts/Surfaces/PerigeeSurface.hpp>
 #include <Acts/Surfaces/Surface.hpp>
 #include <Acts/Utilities/Result.hpp>
-
-#include <Evaluator/DD4hepUnits.h>
-#include <edm4hep/Vector3d.h>
-#include <edm4hep/Vector3f.h>
-#include <edm4eic/Cov6f.h>
-#include <fmt/core.h>
-#include <spdlog/common.h>
 #include <Eigen/Core>
 #include <cmath>
 #include <limits>
 #include <memory>
 #include <utility>
 
-#include "extensions/spdlog/SpdlogFormatters.h" // IWYU pragma: keep
-
+#include "extensions/spdlog/SpdlogFormatters.h"  // IWYU pragma: keep
 
 void eicrecon::TrackParamTruthInit::init(std::shared_ptr<const ActsGeometryProvider> geo_svc, const std::shared_ptr<spdlog::logger> logger) {
     m_log = logger;
     m_geoSvc = geo_svc;
 }
 
-std::unique_ptr<edm4eic::TrackParametersCollection>
-eicrecon::TrackParamTruthInit::produce(const edm4hep::MCParticleCollection* mcparticles) {
+std::unique_ptr<tdis::TrackParametersCollection>
+eicrecon::TrackParamTruthInit::produce(const tdis::MCParticleCollection* mcparticles) {
     // MCParticles uses numerical values in its specified units,
     // while m_cfg is in the DD4hep unit system
 
     // Create output collection
-    auto track_parameters = std::make_unique<edm4eic::TrackParametersCollection>();
+    auto track_parameters = std::make_unique<tdis::TrackParametersCollection>();
 
     // Loop over input particles
     for (const auto& mcparticle: *mcparticles) {
@@ -111,7 +110,7 @@ eicrecon::TrackParamTruthInit::produce(const edm4hep::MCParticleCollection* mcpa
 
         Acts::Vector2 localpos = local.value();
 
-        // Insert into edm4eic::TrackParameters, which uses numerical values in its specified units
+        // Insert into tdis::TrackParameters, which uses numerical values in its specified units
         auto track_parameter = track_parameters->create();
         track_parameter.setType(-1); // type --> seed(-1)
         track_parameter.setLoc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))}); // 2d location on surface [mm]
@@ -119,7 +118,7 @@ eicrecon::TrackParamTruthInit::produce(const edm4hep::MCParticleCollection* mcpa
         track_parameter.setTheta(theta); // theta [rad]
         track_parameter.setQOverP(charge / (pinit / dd4hep::GeV)); // Q/p [e/GeV]
         track_parameter.setTime(mcparticle.getTime()); // time [ns]
-        edm4eic::Cov6f cov;
+        tdis::Cov6f cov;
         cov(0,0) = 1.0; // loc0
         cov(1,1) = 1.0; // loc1
         cov(2,2) = 0.05; // phi

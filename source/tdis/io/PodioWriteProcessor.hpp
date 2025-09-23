@@ -144,9 +144,9 @@ inline void PodioWriteProcessor::Init() {
 
 inline void PodioWriteProcessor::Process(const std::shared_ptr<const JEvent>& event) {
     std::lock_guard<std::mutex> lock(m_mutex);
-    // auto hits = event->GetCollection<edm4eic::TrackerHit>("TrackerHit");
+    // auto hits = event->GetCollection<tdis::TrackerHit>("TrackerHit");
 
-    [[maybe_unused]] auto tracks = event->GetCollection<edm4eic::Track>("FittedTracks");
+    [[maybe_unused]] auto tracks = event->GetCollection<tdis::Track>("FittedTracks");
 
     m_log->info("PodioWriteProcessor::Process() All event collections:");
     auto event_collections = event->GetAllCollectionNames();

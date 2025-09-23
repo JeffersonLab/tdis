@@ -32,8 +32,8 @@ namespace tdis::tracking {
     struct ReconstructedHitFactory : public JOmniFactory<ReconstructedHitFactory> {
         // Inputs and outputs
         PodioInput<tdis::DigitizedMtpcMcHit> m_mc_hits_in{this, {"DigitizedMtpcMcHit"}};
-        PodioOutput<edm4eic::TrackerHit>     m_tracker_hits_out{this, "TrackerHit"};
-        PodioOutput<edm4eic::Measurement2D>  m_measurements_out{this, "Measurement2D"};
+        PodioOutput<tdis::TrackerHit>     m_tracker_hits_out{this, "TrackerHit"};
+        PodioOutput<tdis::Measurement2D>  m_measurements_out{this, "Measurement2D"};
 
         Service<ActsGeometryService> m_service_geometry{this};
         Service<services::LogService> m_service_log{this};
@@ -61,8 +61,8 @@ namespace tdis::tracking {
         void Execute(int32_t /*run_nr*/, uint64_t event_index) {
             using namespace Acts::UnitLiterals;  // For e.g. 1_cm, 1_um, etc.
 
-            auto rec_hits     = std::make_unique<edm4eic::TrackerHitCollection>();
-            auto measurements = std::make_unique<edm4eic::Measurement2DCollection>();
+            auto rec_hits     = std::make_unique<tdis::TrackerHitCollection>();
+            auto measurements = std::make_unique<tdis::Measurement2DCollection>();
 
             // Retrieve plane Z-positions from geometry
             auto plane_positions = m_service_geometry->GetPlanePositions();
@@ -98,7 +98,7 @@ namespace tdis::tracking {
                     plane_z, z_to_gem, calc_z, mc_hit.getTruePosition().z);
 
                 // Choose position: either true or digitized
-                edm4hep::Vector3f position;
+                tdis::Vector3f position;
                 if (m_cfg_use_true_pos() && !std::isnan(mc_hit.getTruePosition().x)) {
                     position.x = mc_hit.getTruePosition().x;
                     position.y = mc_hit.getTruePosition().y;
@@ -114,7 +114,7 @@ namespace tdis::tracking {
                 double xy_variance   = get_variance(max_dimension);
 
                 // For now, put some placeholder 1 cm^2 in z
-                edm4eic::CovDiag3f cov{static_cast<float>(xy_variance),
+                tdis::CovDiag3f cov{static_cast<float>(xy_variance),
                                        static_cast<float>(xy_variance),
                                        static_cast<float>(1_cm)};
 

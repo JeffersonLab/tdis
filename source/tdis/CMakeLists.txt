@@ -48,37 +48,27 @@ target_include_directories(podio_model_dict PRIVATE "podio_model")
 
 # --------- CREATE TDIS EXECUTABLE ----------------
 add_executable(tdis
-        tdis_main.cpp
+        main.cpp
         services/LogService.hpp
         PadGeometryHelper.hpp
+
         io/DigitizedDataEventSource.hpp
         io/PodioWriteProcessor.hpp
+
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
         tracking/ReconstructedHitFactory.h
-        tracking/BuildMtpcDetector.cpp.v1.bck
-        tracking/BuildMtpcDetector.hpp
+
+        tracking/BuildCylindricalDetector.h
+        tracking/BuildCylindricalDetector.cpp
+
         tracking/MtpcDetectorElement.cpp
         tracking/MtpcDetectorElement.hpp
-        # tracking/Measurement2DFactory.h
+
         tracking/TruthTrackParameterFactory.h
+
         tracking/KalmanFittingFactory.h
         tracking/KalmanFittingFactory.cpp
-        # tracking/CKFTracking.h
-        # tracking/CKFTracking.cc
-        # tracking/ConfiguredFitter.hpp
-        tracking/ConfiguredKalmanFitter.cpp
-        tracking/ConfiguredKalmanFitter.h
-        tracking/RefittingCalibrator.h
-        tracking/RefittingCalibrator.cpp
-        tracking/BuildMtpcDetector.hpp
-        tracking/BuildMtpcDetectorCG.cpp
-        tracking/ConfiguredKalmanFitter.h
-        # tracking/MeasurementCalibration.cpp
-        # tracking/MeasurementCalibration.h
-
-        #tracking/BuildMtpcDetectorGEM.cpp
-        #tracking/BuildMtpcDetectorGEM.hpp
 
 )
 

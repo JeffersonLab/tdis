@@ -23,7 +23,7 @@
 #include <string>
 #include <string_view>
 
-#include "BuildMtpcDetector.hpp"
+#include "BuildCylindricalDetector.h"
 #include "services/LogService.hpp"
 
 // Formatter for Eigen matrices

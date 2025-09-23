@@ -7,11 +7,12 @@
 #include <edm4eic/TrackParametersCollection.h>
 #include <edm4hep/MCParticleCollection.h>
 #include <spdlog/logger.h>
+
 #include <memory>
 #include <random>
 
+#include "../TrackParamTruthInitConfig.h"
 #include "ActsGeometryProvider.h"
-#include "TrackParamTruthInitConfig.h"
 #include "algorithms/interfaces/ParticleSvc.h"
 #include "algorithms/interfaces/WithPodConfig.h"
 
@@ -22,8 +23,8 @@ namespace eicrecon {
 
         void init(std::shared_ptr<const ActsGeometryProvider> geo_svc, const std::shared_ptr<spdlog::logger> logger);
 
-        std::unique_ptr<edm4eic::TrackParametersCollection>
-            produce(const edm4hep::MCParticleCollection* parts);
+        std::unique_ptr<tdis::TrackParametersCollection>
+            produce(const tdis::MCParticleCollection* parts);
 
     private:
         std::shared_ptr<spdlog::logger> m_log;
