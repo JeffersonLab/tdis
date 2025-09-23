@@ -183,13 +183,13 @@ ENV ACTS_DIR=${ACTS_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          JANA2 build                                                   ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_JANA2=v2.4.2
+ARG VERSION_JANA2=master
 ENV JANA2_SRC_PATH=${APP_ROOT}/jana2-src \
     JANA2_BLD_PATH=${APP_ROOT}/jana2-build \
     JANA2_INS_PATH=${APP_ROOT}/jana2
 
 RUN set -ex && \
-    git clone --branch ${VERSION_JANA2} --depth 1 https://github.com/JeffersonLab/JANA2.git "${JANA2_SRC_PATH}" && \
+    git clone  --branch ${VERSION_JANA2} --depth 1 https://github.com/JeffersonLab/JANA2.git "${JANA2_SRC_PATH}" && \
     mkdir -p "${JANA2_BLD_PATH}" && cd "${JANA2_BLD_PATH}" && \
     cmake \
       -DCMAKE_INSTALL_PREFIX="${JANA2_INS_PATH}" \

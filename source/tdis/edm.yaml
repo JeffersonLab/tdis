@@ -325,6 +325,7 @@ datatypes :
       - tdis::Vector3f      perigee   // Vector for the perigee (line surface)
     OneToManyRelations:
       - tdis::TrackerHit       hits      // Tracker hits triplet for seeding
+      - tdis::Measurement2D    measurements // Tracker measurements associated with hits
     OneToOneRelations:
       - tdis::TrackParameters  params    // Initial track parameters
 
