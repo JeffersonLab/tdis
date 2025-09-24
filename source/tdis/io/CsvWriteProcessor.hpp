@@ -56,26 +56,72 @@ private:
 
 
     void writeTrackHeader() {
-
-            fmt::print(m_trackFile,
-                "evt,"
-                "trk_id,"
-                "\n");
-
-
+        fmt::print(m_trackFile,
+            "evt,"              // 0 - event number/index
+            "trk_id,"           // 1 - track index
+            "mc_mom,"           // 2 - MC total momentum
+            "mc_phi,"           // 3 - MC phi angle at start
+            "mc_theta,"         // 4 - MC theta angle at start
+            "mc_vtx_z,"         // 5 - MC exact Z vertex
+            "mc_hits_count,"    // 6 - MC hits count
+            "pdg,"              // 7 - init truth particle PDG
+            "tp_phi,"           // 8 - init truth parameters phi
+            "tp_theta,"         // 9 - init truth parameters theta
+            "tp_time,"          // 10 - track time
+            "qoverp,"           // 11 - q over p
+            "surface,"          // 12 - surface ID
+            "loc0,"             // 13 - location on surface 0
+            "loc1,"             // 14 - location on surface 1
+            "cov_loc0,"         // 15 - covariance loc0
+            "cov_loc1,"         // 16 - covariance loc1
+            "cov_phi,"          // 17 - covariance phi
+            "cov_theta,"        // 18 - covariance theta
+            "cov_qoverp,"       // 19 - covariance qoverp
+            "cov_time,"         // 20 - covariance time
+            "perigee_x,"        // 21 - perigee x
+            "perigee_y,"        // 22 - perigee y
+            "perigee_z,"        // 23 - perigee z
+            "fhit_id,"          // 24 - first hit index
+            "fhit_time,"        // 25 - first hit time
+            "fhit_plane,"       // 26 - first hit plane
+            "fhit_ring,"        // 27 - first hit ring
+            "fhit_pad,"         // 28 - first hit pad
+            "fhit_ztogem,"      // 29 - first hit z to gem
+            "fhit_true_x,"      // 30 - first hit true x
+            "fhit_true_y,"      // 31 - first hit true y
+            "fhit_true_z"       // 32 - first hit true z
+            "\n");
     }
 
     void writeHitHeader() {
-
-            fmt::print(m_hitFile,
-                "evt,"
-                "trk_id,"
-                "hit_id,"
-                "hit_plane,"
-                "hit_ring,"
-                "hit_pad"
-                "\n");
-
+        fmt::print(m_hitFile,
+            "evt,"              // 0 - event number/index
+            "trk_id,"           // 1 - track index
+            "meas_time,"        // 2 - measurement time
+            "meas_surface,"     // 3 - measurement surface ID
+            "meas_loc0,"        // 4 - measurement local position 0
+            "meas_loc1,"        // 5 - measurement local position 1
+            "meas_cov0,"        // 6 - measurement covariance 0
+            "meas_cov1,"        // 7 - measurement covariance 1
+            "meas_cov_time,"    // 8 - measurement covariance time
+            "hit_id,"           // 9 - tracker hit ID
+            "hit_cell_id,"      // 10 - tracker hit cell ID
+            "hit_x,"            // 11 - tracker hit x position
+            "hit_y,"            // 12 - tracker hit y position
+            "hit_z,"            // 13 - tracker hit z position
+            "hit_time,"         // 14 - tracker hit time
+            "hit_adc,"          // 15 - tracker hit ADC
+            "mc_hit_id,"        // 16 - MC hit ID
+            "mc_hit_plane,"     // 17 - MC hit plane
+            "mc_hit_ring,"      // 18 - MC hit ring
+            "mc_hit_pad,"       // 19 - MC hit pad
+            "mc_hit_time,"      // 20 - MC hit time
+            "mc_hit_adc,"       // 21 - MC hit ADC
+            "mc_hit_ztogem,"    // 22 - MC hit z to gem
+            "mc_hit_true_x,"    // 23 - MC hit true x
+            "mc_hit_true_y,"    // 24 - MC hit true y
+            "mc_hit_true_z"     // 25 - MC hit true z
+            "\n");
     }
 
 public:
@@ -213,14 +259,38 @@ public:
     void writeMeasurement(uint64_t eventIndex, const TrackSeed& seed, const Measurement2D& measurement) {
         auto cov = measurement.getCovariance();
         auto loc = measurement.getLoc();
-        auto trackerHit = measurement.getHits().at(0);  // Currently we know it should be tehre
-        auto mcHit = trackerHit.getRawHit();              // It must be there
-        fmt::print(m_hitFile, "{},{}",
-            eventIndex,                 // 0 - evt - event number/index
-            seed.getObjectID().index,   // 1 - trk_id -  track index,
-            measurement.getTime(),      // - time -
-
-            );
+        auto trackerHit = measurement.getHits().at(0);  // Currently we know it should be there
+        auto mcHit = trackerHit.getRawHit();            // It must be there
+        auto hitPos = trackerHit.getPosition();
+        
+        fmt::print(m_hitFile, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+            eventIndex,                     // 0 - evt - event number/index
+            seed.getObjectID().index,       // 1 - trk_id - track index
+            measurement.getTime(),          // 2 - meas_time - measurement time
+            measurement.getSurface(),       // 3 - meas_surface - measurement surface ID
+            loc[0],                         // 4 - meas_loc0 - measurement local position 0
+            loc[1],                         // 5 - meas_loc1 - measurement local position 1
+            cov[0],                         // 6 - meas_cov0 - measurement covariance 0
+            cov[1],                         // 7 - meas_cov1 - measurement covariance 1
+            cov[2],                         // 8 - meas_cov_time - measurement covariance time
+            trackerHit.getObjectID().index, // 9 - hit_id - tracker hit ID
+            trackerHit.getCellID(),         // 10 - hit_cell_id - tracker hit cell ID
+            hitPos.x,                       // 11 - hit_x - tracker hit x position
+            hitPos.y,                       // 12 - hit_y - tracker hit y position
+            hitPos.z,                       // 13 - hit_z - tracker hit z position
+            trackerHit.getTime(),           // 14 - hit_time - tracker hit time
+            trackerHit.getEDep(),           // 15 - hit_adc - tracker hit ADC (energy deposit)
+            mcHit.getObjectID().index,      // 16 - mc_hit_id - MC hit ID
+            mcHit.getPlane(),               // 17 - mc_hit_plane - MC hit plane
+            mcHit.getRing(),                // 18 - mc_hit_ring - MC hit ring
+            mcHit.getPad(),                 // 19 - mc_hit_pad - MC hit pad
+            mcHit.getTime(),                // 20 - mc_hit_time - MC hit time
+            mcHit.getAdc(),                 // 21 - mc_hit_adc - MC hit ADC
+            mcHit.getZToGem(),              // 22 - mc_hit_ztogem - MC hit z to gem
+            mcHit.getTruePosition().x,      // 23 - mc_hit_true_x - MC hit true x
+            mcHit.getTruePosition().y,      // 24 - mc_hit_true_y - MC hit true y
+            mcHit.getTruePosition().z       // 25 - mc_hit_true_z - MC hit true z
+        );
 
         // end of record
         fmt::print(m_hitFile, "\n");
