@@ -81,9 +81,9 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
     double radialStep      = (outerRadius - innerRadius) / numRings;
 
     log->info("Building cylindrical mTPC geometry with:");
-    log->info("  innerRadius = {} mm, outerRadius = {} mm, cylinderLength = {} mm",
+    log->info("  innerRadius = {:.3f} mm, outerRadius = {:.3f} mm, cylinderLength = {:.3f} mm",
         innerRadius/ActsUnits::mm, outerRadius/ActsUnits::mm, cylinderLength/ActsUnits::mm);
-    log->info("  halfLength  = {} mm, numRings = {}, radialStep = {} mm",
+    log->info("  halfLength  = {:.3f} mm, numRings = {:.3f}, radialStep = {:.3f} mm",
         halfLength/ActsUnits::mm, numRings/ActsUnits::mm, radialStep/ActsUnits::mm);
 
     // We store the final layers as generic Layer pointers
@@ -103,8 +103,8 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
         // Unique ID for the ring
         uint32_t id = static_cast<uint32_t>(i);
 
-        log->info("  Ring id={} => radius = {:.3f} mm, halfLength = {:.3f} mm, thickness = {:.3f}, radius+step={:.3f}",
-                   id, ringRadius, halfLength, radialStep, ringRadius+radialStep);
+        log->info("  Ring id={:<3} => radius = {:.3f} mm, halfLength = {:.3f} mm, thickness = {:.3f}, radius+step={:.3f}",
+                   id, ringRadius/ActsUnits::mm, halfLength/ActsUnits::mm, radialStep/ActsUnits::mm, ringRadius+radialStep);
 
         // Identity transform for the element
         auto elementTransform = std::make_shared<const Transform3>(Transform3::Identity());
@@ -119,9 +119,6 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
 
         // Extract the cylinder surface from the element
         auto cylinderSurface = detElem->surface().getSharedPtr();
-
-        auto setGeoId = cylinderSurface->geometryId();
-        std::cout<<setGeoId<<std::endl;
 
         // Create a single-surface SurfaceArray
         // For multiple surfaces, you'd push them into a vector,
@@ -161,7 +158,7 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
     //
     auto volumeBounds = std::make_shared<CylinderVolumeBounds>(innerRadius, outerRadius, halfLength);
     log->info("Volume bounds: rIn={} mm, rOut={} mm, halfZ={} mm",
-              innerRadius, outerRadius, halfLength);
+              innerRadius/ActsUnits::mm, outerRadius/ActsUnits::mm, halfLength/ActsUnits::mm);
 
     // Assign volume material
     auto volumeMaterial = std::make_shared<HomogeneousVolumeMaterial>(argonGas);
@@ -195,7 +192,7 @@ std::unique_ptr<const Acts::TrackingGeometry> tdis::tracking::buildCylindricalDe
             continue;
         }
 
-        log->info("   ring: {} => Surface ID: {}", ringId, surfaceFromTrkGeo->geometryId().value());
+        log->info("   ring: {:<3} => Surface ID: {}", ringId, surfaceFromTrkGeo->geometryId().value());
     }
     log->info("Done building cylindrical mTPC geometry. Returning TrackingGeometry.");
     return trackingGeometry;

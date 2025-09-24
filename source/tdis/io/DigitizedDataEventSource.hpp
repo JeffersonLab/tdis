@@ -372,8 +372,8 @@ namespace tdis::io {
         EventInfoCollection info;
         info.push_back(MutableEventInfo(0, 0, 0)); // event nr, timeslice nr, run nr
         event.InsertCollection<EventInfo>(std::move(info), "EventInfo");
-        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTrack");
-        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHit");
+        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTracks");
+        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHits");
         m_log->info("Event has been emitted at {}", m_event_line_index);
         return Result::Success;
     }

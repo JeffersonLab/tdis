@@ -9,13 +9,13 @@
 #include <utility>
 
 #include "CLI/CLI.hpp"
+#include "io/CsvWriteProcessor.hpp"
 #include "io/DigitizedDataEventSource.hpp"
 #include "io/PodioWriteProcessor.hpp"
 #include "services/LogService.hpp"
 #include "tracking/ActsGeometryService.h"
 #include "tracking/KalmanFittingFactory.h"
-#include "tracking/TruthTrackSeedFactory.h"
-
+#include "tracking/TruthTracksHitsSeedsFactory.h"
 
 struct ProgramArguments {
     std::map<std::string, std::string> params;
@@ -118,10 +118,10 @@ int main(int argc, char* argv[]) {
     //     {"TrackerHit", "Measurement2D"});
     // app.Add(recoHitGenerator);
 
-    auto truthTrackInitGenerator = new JOmniFactoryGeneratorT<tdis::tracking::TruthTrackSeedFactory>();
+    auto truthTrackInitGenerator = new JOmniFactoryGeneratorT<tdis::tracking::TruthTracksHitsSeedsFactory>();
     truthTrackInitGenerator->AddWiring(
         "TruthTrackParameterGenerator",
-        {"DigitizedMtpcMcTrack"},
+        {"DigitizedMtpcMcTracks"},
         {
             "TruthTrackSeeds",
             "TruthTrackParameters",
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
     auto kalmanFitterGenerator = new JOmniFactoryGeneratorT<tdis::tracking::KalmanFittingFactory>();
     kalmanFitterGenerator->AddWiring(
         "KalmanFitterGenerator",
-        {"DigitizedMtpcMcTrack", "DigitizedMtpcMcHit", "TrackerHits", "Measurements2D"},
+        {"DigitizedMtpcMcTracks", "DigitizedMtpcMcHits", "TrackerHits", "Measurements2D"},
         {"FittedTrajectories", "FittedTrackParams", "FittedTracks"});
     app.Add(kalmanFitterGenerator);
 
@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
 
 
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
+    app.Add(new tdis::io::CsvWriterProcessor());
     app.Add(new tdis::io::PodioWriteProcessor(&app));
 
     // app.Add(new JEventProcessorPodio);

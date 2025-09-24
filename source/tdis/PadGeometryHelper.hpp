@@ -3,15 +3,16 @@
 #include <cmath>       // For std::cos, std::sin, M_PI
 #include <stdexcept>   // For std::invalid_argument
 #include <utility>     // For std::pair
+#include <Acts/Definitions/Units.hpp>
 
 // Constants
 constexpr int num_rings = 21;
 constexpr int num_pads_per_ring = 122;
-constexpr double min_radius = 5.0 * Acts::UnitConstants::cm;          // Minimum radius in cm
-constexpr double max_radius = 15.0 * Acts::UnitConstants::cm;         // Maximum radius in cm
-constexpr double total_radial_width = max_radius - min_radius;  // Total radial width (10 cm)
-constexpr double ring_width = total_radial_width / num_rings;   // Radial width of each ring
-constexpr double delta_theta = 2 * M_PI / num_pads_per_ring;  // Angular width of each pad in radians
+constexpr double min_radius = 5.0 * Acts::UnitConstants::cm;         // Minimum radius in cm
+constexpr double max_radius = 15.0 * Acts::UnitConstants::cm;        // Maximum radius in cm
+constexpr double total_radial_width = max_radius - min_radius;       // Total radial width (10 cm)
+constexpr double ring_width = total_radial_width / num_rings;        // Radial width of each ring
+constexpr double delta_theta = 2 * M_PI / num_pads_per_ring;         // Angular width of each pad in radians
 
 namespace tdis {
 

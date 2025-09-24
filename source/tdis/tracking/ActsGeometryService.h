@@ -38,17 +38,14 @@ namespace tdis::tracking {
                                                            const Acts::TrackingVolume& tVolume,
                                                            const Acts::GeometryContext& gctx);
 
-        /// Basically returns cylinder corresponding to ring
+        /// Returns cylinder corresponding to ring index
         std::shared_ptr<tdis::tracking::MtpcDetectorElement> GetDetectorCylinder(size_t index) const {
             return m_detector_cylinders.at(index);
         }
 
-
-
         std::shared_ptr<const Acts::TrackingGeometry> GetTrackingGeometry() const {
             return gGeometry;
         }
-
 
       private:
         Parameter<std::string> m_tgeo_file{this, "acts:geometry", "g4sbs_mtpc.root","TGeo filename with geometry for ACTS"};

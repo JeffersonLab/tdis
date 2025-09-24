@@ -54,6 +54,7 @@ add_executable(tdis
 
         io/DigitizedDataEventSource.hpp
         io/PodioWriteProcessor.hpp
+        io/CsvWriteProcessor.hpp
 
         tracking/ActsGeometryService.cc
         tracking/ActsGeometryService.h
@@ -65,10 +66,13 @@ add_executable(tdis
         tracking/MtpcDetectorElement.cpp
         tracking/MtpcDetectorElement.hpp
 
-        tracking/TruthTrackParameterFactory.h
+        tracking/TruthTracksHitsSeedsFactory.h
+        tracking/TruthTracksHitsSeedsFactory.cpp
 
         tracking/KalmanFittingFactory.h
         tracking/KalmanFittingFactory.cpp
+
+
 
 )
 

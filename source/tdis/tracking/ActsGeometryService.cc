@@ -316,10 +316,11 @@ void tdis::tracking::ActsGeometryService::Init() {
         exit(1);    // TODO this is due to JANA2 issue #381. Remove after is fixed
     }
 
-    printNodeTree(m_tgeo_manager->GetTopNode(), /*printVolumes*/ false);
+    if (m_log->level() <= (int) spdlog::level::debug) {
+        printNodeTree(m_tgeo_manager->GetTopNode(), /*printVolumes*/ false);
+    }
 
     std::vector<TGeoNode*> disk_nodes;
-
     findNodesWithPrefix(m_tgeo_manager->GetTopNode(), "mTPCReadoutDisc", disk_nodes);
 
     m_plane_positions.clear();
@@ -361,11 +362,7 @@ void tdis::tracking::ActsGeometryService::Init() {
         stereos.push_back(0);
     }
 
-
-
     m_init_log->info("Building ACTS Geometry");
-
-
 
     /// Return the telescope detector
     // TODO remove it. This is from the old implementation
