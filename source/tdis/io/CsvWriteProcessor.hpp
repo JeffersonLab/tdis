@@ -207,9 +207,9 @@ public:
         auto perigee = seed.getPerigee();
 
 
-        fmt::print(m_trackFile, "{},{}",
+        fmt::print(m_trackFile, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
             eventIndex,                 // 0 - evt - event number/index
-            seed.getObjectID().index,   // 1 - trk_id -  track index,
+            seed.getObjectID().index,   // 1 - trk_id - track index
             mcTrack.getMomentum(),      // 2 - mc_mom - total momentum
             mcTrack.getPhi(),           // 3 - mc_phi - phi angle at start
             mcTrack.getTheta(),         // 4 - mc_theta - theta angle at start
@@ -218,20 +218,20 @@ public:
             params.getPdg(),            // 7 - pdg - init truth particle Pdg
             params.getPhi(),            // 8 - tp_phi - init truth parameters phi
             params.getTheta(),          // 9 - tp_theta - init truth parameters theta
-            params.getTime(),           // 10 - getTrackTime
-            params.getQOverP(),         // 11 - qOverP - init truth
+            params.getTime(),           // 10 - tp_time - track time
+            params.getQOverP(),         // 11 - qoverp - q over p
             params.getSurface(),        // 12 - surface - init truth surface ID
-            loc[0],                     // 13 - location on surface 0
-            loc[1],                     // 14 - location on surface 1
-            trkCov(0,0),        // 15 - cov_loc0 - init truth params covariance
-            trkCov(1,1),        // 16 - cov_loc1 - init truth params covariance
-            trkCov(2,2),        // 17 - cov_phi - init truth params covariance
-            trkCov(3,3),        // 18 - cov_theta - init truth params covariance
-            trkCov(4,4),        // 19 - cov_qoverp - init truth params covariance
-            trkCov(5,5),        // 20 - cov_time - init truth params covariance
-            perigee.x,              // 21 - perigee_x -
-            perigee.y,              // 22 - perigee_y -
-            perigee.z               // 23 - perigee_z -
+            loc[0],                     // 13 - loc0 - location on surface 0
+            loc[1],                     // 14 - loc1 - location on surface 1
+            trkCov(0,0),                // 15 - cov_loc0 - init truth params covariance
+            trkCov(1,1),                // 16 - cov_loc1 - init truth params covariance
+            trkCov(2,2),                // 17 - cov_phi - init truth params covariance
+            trkCov(3,3),                // 18 - cov_theta - init truth params covariance
+            trkCov(4,4),                // 19 - cov_qoverp - init truth params covariance
+            trkCov(5,5),                // 20 - cov_time - init truth params covariance
+            perigee.x,                  // 21 - perigee_x - perigee x
+            perigee.y,                  // 22 - perigee_y - perigee y
+            perigee.z                   // 23 - perigee_z - perigee z
         );
 
         // Hits are always sorted by time
