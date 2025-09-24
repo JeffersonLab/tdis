@@ -327,7 +327,8 @@ datatypes :
       - tdis::TrackerHit       hits      // Tracker hits triplet for seeding
       - tdis::Measurement2D    measurements // Tracker measurements associated with hits
     OneToOneRelations:
-      - tdis::TrackParameters  params    // Initial track parameters
+      - tdis::TrackParameters  initParams      // Initial track parameters
+      - tdis::DigitizedMtpcMcTrack mcTrack     // True MC track
 
   tdis::Trajectory:
     Description: "Raw trajectory from the tracking algorithm. What is called hit here is 2d measurement indeed."

@@ -87,12 +87,15 @@ namespace tdis::tracking {
 
                 // Choose position: either true or digitized
                 tdis::Vector3f position;
+                double onSurfaceTolerance;      // This tolerance is used in globalToLocal conversion
                 if (m_cfg_useTrueHitPos() && !std::isnan(mcHit.getTruePosition().x)) {
                     position = mcHit.getTruePosition();
+                    onSurfaceTolerance = getPadApproxWidth(ring);   // tolerance ~pad size
                 } else {
                     position.x = static_cast<float>(padX);
                     position.y = static_cast<float>(padY);
                     position.z = static_cast<float>(hitCalcZ);
+                    onSurfaceTolerance = 1*Acts::UnitConstants::mm; // with pads centers we should be precise
                 }
 
                 // Covariance estimate
@@ -126,7 +129,7 @@ namespace tdis::tracking {
 
                 // Convert to local coordinates
                 Acts::Vector2 loc = Acts::Vector2::Zero();
-                auto onSurfaceTolerance = getPadApproxWidth(ring);
+
 
                 try {
                     Acts::Vector2 pos = surfaceRef
@@ -156,7 +159,6 @@ namespace tdis::tracking {
                     cov(0, 0),
                     cov(1, 1),
                     hit.getTimeError() * hit.getTimeError(),
-                    0.0f  // No off-diagonal for now
                 });
                 meas2D.addToWeights(1.0);
                 meas2D.addToHits(hit);
@@ -229,7 +231,7 @@ namespace tdis::tracking {
             cov(2,2) = 0.05;  // phi
             cov(3,3) = 0.01;  // theta
             cov(4,4) = 0.1;   // qOverP
-            cov(5,5) = 10e9;  // time
+            cov(5,5) = 10e6;  // time
             track_param.setCovariance(cov);
 
             // -------------------------------
@@ -252,7 +254,8 @@ namespace tdis::tracking {
             }
 
             // Set track parameters
-            seed.setParams(track_param);
+            seed.setInitParams(track_param);
+            seed.setMcTrack(mc_track);
 
             m_log->trace("Created seed with {} hits, perigee=({:.2f}, {:.2f}, {:.2f}), p={:.3f} GeV",
                        n_seed_hits, xpca, ypca, zpca, pinit);

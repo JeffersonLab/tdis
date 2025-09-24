@@ -145,7 +145,10 @@ int main(int argc, char* argv[]) {
 
 
     app.Add(new JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>);
-    app.Add(new tdis::io::CsvWriterProcessor());
+
+    auto csvProcessor = new tdis::io::CsvWriterProcessor();
+
+    app.Add(csvProcessor);
     app.Add(new tdis::io::PodioWriteProcessor(&app));
 
     // app.Add(new JEventProcessorPodio);

@@ -3,7 +3,6 @@
 #include <JANA/Components/JOmniFactory.h>
 #include <JANA/JFactory.h>
 
-// Needed so that the dynamic_cast to CylinderBounds sees the full definition:
 #include <Acts/Surfaces/CylinderBounds.hpp>
 #include <Acts/Surfaces/Surface.hpp>
 
