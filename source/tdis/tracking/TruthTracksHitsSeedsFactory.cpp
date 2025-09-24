@@ -1,9 +1,17 @@
-#include <Acts/Surfaces/CylinderBounds.hpp>
-#include <Acts/Surfaces/PerigeeSurface.hpp>
+#include "TruthTracksHitsSeedsFactory.h"
+
 #include <podio_model/DigitizedMtpcMcTrack.h>
 #include <podio_model/DigitizedMtpcMcTrackCollection.h>
 
-#include "TruthTracksHitsSeedsFactory.h"
+#include <Acts/Definitions/Units.hpp>
+#include <Acts/Surfaces/CylinderBounds.hpp>
+#include <Acts/Surfaces/PerigeeSurface.hpp>
+
+#include "PadGeometryHelper.hpp"
+#include "podio_model/Measurement2DCollection.h"
+#include "podio_model/TrackParametersCollection.h"
+#include "podio_model/TrackSeedCollection.h"
+#include "podio_model/TrackerHitCollection.h"
 
 inline double get_resolution(const double pixel_size) {
     constexpr const double sqrt_12 = 3.4641016151;
@@ -19,7 +27,7 @@ namespace tdis::tracking {
 
     void TruthTracksHitsSeedsFactory::Configure() {
         m_service_geometry();
-        m_log = m_service_log->logger("tracking:truth_seed");
+        m_log = m_service_log->logger("TruthTracksHitsSeedsFactory");
 
         // Initialize random generator
         std::random_device rd;
@@ -32,7 +40,7 @@ namespace tdis::tracking {
     }
 
     void TruthTracksHitsSeedsFactory::Execute(int32_t /*run_nr*/, uint64_t event_index) {
-        using namespace Acts::UnitLiterals;
+        namespace ActsUnits = Acts::UnitConstants;
 
         // Create output collections
         auto seeds = std::make_unique<tdis::TrackSeedCollection>();
@@ -93,7 +101,7 @@ namespace tdis::tracking {
                 tdis::CovDiag3f cov{
                     static_cast<float>(xy_variance),
                     static_cast<float>(xy_variance),
-                    static_cast<float>(1_cm)
+                    static_cast<float>(1*ActsUnits::cm)
                 };
 
                 uint32_t cell_id = 1'000'000 * plane + 1'000 * ring + pad;
@@ -104,7 +112,7 @@ namespace tdis::tracking {
                     position,
                     cov,
                     static_cast<float>(mcHit.getTime()),
-                    static_cast<float>(1_ns),   // Time resolution
+                    static_cast<float>(1*ActsUnits::ms),   // Time resolution
                     static_cast<float>(mcHit.getAdc()),
                     0.0F
                 );
@@ -118,7 +126,7 @@ namespace tdis::tracking {
 
                 // Convert to local coordinates
                 Acts::Vector2 loc = Acts::Vector2::Zero();
-                auto onSurfaceTolerance = 1 * Acts::UnitConstants::mm;
+                auto onSurfaceTolerance = getPadApproxWidth(ring);
 
                 try {
                     Acts::Vector2 pos = surfaceRef
@@ -133,8 +141,9 @@ namespace tdis::tracking {
                     loc[Acts::eBoundLoc1] = pos[1];
 
                 } catch (std::exception& ex) {
-                    m_log->warn("Can't convert globalToLocal for hit: plane={} ring={} pad={}, skipping",
-                               plane, ring, pad);
+                    m_log->warn("Can't convert globalToLocal for hit: plane={} ring={} pad={},"
+                                " onSurfaceTolerance={}, error: '{}' SKIPPING HIT",
+                               plane, ring, pad, onSurfaceTolerance, ex.what());
                     continue;
                 }
 

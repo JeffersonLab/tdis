@@ -31,7 +31,8 @@ class CsvWriterProcessor : public JEventProcessor {
 
     // Parameters following m_cfg_xxxYyy convention
     Parameter<std::string> m_cfg_filePrefix {this,
-        "csv:file", "output",
+        "csv:prefix",
+        "output",
         "File name prefix with path for CSV output files"};
 
     PodioInput<tdis::TrackSeed> m_in_trackSeeds {this, {"TruthTrackSeeds"}};
@@ -87,10 +88,12 @@ public:
             m_log = spdlog::default_logger()->clone("csv_writer");
         }
 
-
+        SetTypeName(NAME_OF_THIS);  // Provide JANA with this class's name
     }
 
     void Init() override {
+
+
 
 
         // Construct file names

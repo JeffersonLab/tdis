@@ -71,9 +71,6 @@ add_executable(tdis
 
         tracking/KalmanFittingFactory.h
         tracking/KalmanFittingFactory.cpp
-
-
-
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------

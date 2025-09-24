@@ -5,17 +5,11 @@
 #include <random>
 
 #include "ActsGeometryService.h"
-#include "PadGeometryHelper.hpp"
-#include "podio_model/DigitizedMtpcMcHit.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/Measurement2D.h"
-#include "podio_model/Measurement2DCollection.h"
 #include "podio_model/TrackParameters.h"
-#include "podio_model/TrackParametersCollection.h"
 #include "podio_model/TrackSeed.h"
-#include "podio_model/TrackSeedCollection.h"
 #include "podio_model/TrackerHit.h"
-#include "podio_model/TrackerHitCollection.h"
 
 
 namespace tdis::tracking {

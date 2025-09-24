@@ -72,14 +72,15 @@ public:
         // Header and other metadata
         "EventInfo",
 
-        // Truth record
-        "DigitizedMtpcMcTrack",
-        "DigitizedMtpcMcHit",
+        // Mc records
+        "DigitizedMtpcMcTracks",
+        "DigitizedMtpcMcHits",
 
+        "TruthTrackSeeds",
+        "TruthTrackParameters",
+        "TrackerHits",
+        "Measurements2D",
 
-        "TrackerHit",
-        "Measurement2D",
-        "TruthTrackInitParameters",
         "FittedTrajectories", "FittedTrackParams", "FittedTracks"
     };
 
