@@ -1,5 +1,5 @@
-# docker buildx build --tag eicdev/tdis:latest --push .
-# docker buildx build --no-cache --build-arg BUILD_THREADS=24 --tag eicdev/tdis:latest --push .
+# docker buildx build --tag eicdev/tdis:latest .
+# docker buildx build --no-cache --build-arg BUILD_THREADS=24 --tag eicdev/tdis:latest  .
 # docker push eicdev/tdis:latest
 #
 # docker run --rm -it --init eicdev/tdis:latest
@@ -20,7 +20,7 @@ ENV TDIS_SRC_PATH=${APP_ROOT}/tdis-src \
     TDIS_INS_PATH=${APP_ROOT}/tdis
 
 # Clone TDIS repository
-RUN git clone https://github.com/JeffersonLab/tdis.git "${TDIS_SRC_PATH}"
+RUN git clone -b podio-jana2-error https://github.com/JeffersonLab/tdis.git "${TDIS_SRC_PATH}"
 
 # Build and install TDIS
 RUN set -ex && \

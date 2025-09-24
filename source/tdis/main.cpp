@@ -94,6 +94,15 @@ static inline ProgramArguments parseArguments(int argc, char** argv) {
     return ProgramArguments{paramMap, filePaths};
 }
 
+
+struct TestFactory : public JFactory {
+    // Input
+    PodioInput<tdis::DigitizedMtpcMcTrack> m_in_tracks {this, {"DigitizedMtpcMcTrack"}};
+
+    // Outputs
+    PodioOutput<tdis::TrackSeed>        m_out_seeds {this, "TruthTrackSeeds"};
+};
+
 int main(int argc, char* argv[]) {
 
     auto parsedArgs = parseArguments(argc, argv);
