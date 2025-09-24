@@ -270,16 +270,16 @@ public:
             measurement.getSurface(),       // 3 - meas_surface - measurement surface ID
             loc[0],                         // 4 - meas_loc0 - measurement local position 0
             loc[1],                         // 5 - meas_loc1 - measurement local position 1
-            cov[0],                         // 6 - meas_cov0 - measurement covariance 0
-            cov[1],                         // 7 - meas_cov1 - measurement covariance 1
-            cov[2],                         // 8 - meas_cov_time - measurement covariance time
+            cov(0,0),                         // 6 - meas_cov0 - measurement covariance 0
+            cov(1,1),                         // 7 - meas_cov1 - measurement covariance 1
+            cov(2, 2),                         // 8 - meas_cov_time - measurement covariance time
             trackerHit.getObjectID().index, // 9 - hit_id - tracker hit ID
             trackerHit.getCellID(),         // 10 - hit_cell_id - tracker hit cell ID
             hitPos.x,                       // 11 - hit_x - tracker hit x position
             hitPos.y,                       // 12 - hit_y - tracker hit y position
             hitPos.z,                       // 13 - hit_z - tracker hit z position
             trackerHit.getTime(),           // 14 - hit_time - tracker hit time
-            trackerHit.getEDep(),           // 15 - hit_adc - tracker hit ADC (energy deposit)
+            trackerHit.getEdep(),           // 15 - hit_adc - tracker hit ADC (energy deposit)
             mcHit.getObjectID().index,      // 16 - mc_hit_id - MC hit ID
             mcHit.getPlane(),               // 17 - mc_hit_plane - MC hit plane
             mcHit.getRing(),                // 18 - mc_hit_ring - MC hit ring
