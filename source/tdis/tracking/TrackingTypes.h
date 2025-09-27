@@ -5,17 +5,10 @@
 
 #pragma once
 
-namespace Acts {
-    class SympyStepper;
-}
+#include <Acts/Propagator/SympyStepper.hpp>
+#include <Acts/Plugins/Podio/PodioTrackStateContainer.hpp>
+#include <Acts/Plugins/Podio/PodioTrackContainer.hpp>
 
 namespace tdis {
-    using Stepper = Acts::SympyStepper;
-    using Propagator = Acts::Propagator<Stepper, Acts::Navigator>;
-    using KalmanFitter = Acts::KalmanFitter<Propagator, Acts::VectorMultiTrajectory>;
-    using DirectPropagator = Acts::Propagator<Stepper, Acts::DirectNavigator>;
-    using DirectKalmanFitter = Acts::KalmanFitter<DirectPropagator, Acts::VectorMultiTrajectory>;
 
-    using TrackContainer = Acts::TrackContainer<Acts::MutablePodioTrackContainer, Acts::MutablePodioTrackStateContainer>;
-    using TrackFitterResult = Acts::Result<TrackContainer::TrackProxy>;
 }

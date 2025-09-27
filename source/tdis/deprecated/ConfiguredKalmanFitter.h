@@ -37,7 +37,6 @@ class MeasurementCalibration;
  */
 struct ConfiguredKalmanFitter final : public ConfiguredFitter
 {
-
   /// Whether to include multiple scattering in the fit
   bool multipleScattering = false;
 

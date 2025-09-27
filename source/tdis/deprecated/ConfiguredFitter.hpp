@@ -19,8 +19,8 @@
 #include <ActsExamples/EventData/Track.hpp>
 #include <functional>
 
+#include "../tracking/RefittingCalibrator.h"
 #include "../tracking/TrackingTypes.h"
-#include "RefittingCalibrator.h"
 
 namespace tdis {
 

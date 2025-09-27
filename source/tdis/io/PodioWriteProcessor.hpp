@@ -60,6 +60,7 @@
 #include <vector>
 
 #include "podio_model/Track.h"
+#include "podio_model/TrackCollection.h"
 #include "podio_model/TrackerHit.h"
 #include "services/LogService.hpp"
 

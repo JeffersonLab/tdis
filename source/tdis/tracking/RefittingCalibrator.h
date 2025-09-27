@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <Acts/Plugins/Podio/PodioTrackStateContainer.hpp>
+
 #include "Acts/EventData/MultiTrajectory.hpp"
 #include "Acts/EventData/SourceLink.hpp"
 #include "Acts/EventData/VectorMultiTrajectory.hpp"
@@ -16,12 +18,11 @@
 #include "Acts/Surfaces/Surface.hpp"
 #include "Acts/Utilities/CalibrationContext.hpp"
 
-
 namespace tdis {
   struct RefittingCalibrator
   {
-    using Proxy = Acts::VectorMultiTrajectory::TrackStateProxy;
-    using ConstProxy = Acts::ConstVectorMultiTrajectory::ConstTrackStateProxy;
+    using Proxy = Acts::MutablePodioTrackStateContainer::TrackStateProxy;
+    using ConstProxy = Acts::MutablePodioTrackStateContainer::ConstTrackStateProxy;
 
     struct RefittingSourceLink
     {

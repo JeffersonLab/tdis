@@ -71,6 +71,7 @@ add_executable(tdis
 
         tracking/KalmanFittingFactory.h
         tracking/KalmanFittingFactory.cpp
+        tracking/PodioSurfaceIdConverter.h
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------

@@ -3,74 +3,46 @@
 #include <Acts/Definitions/Units.hpp>
 #include <Acts/Utilities/Helpers.hpp>
 #include <ActsExamples/EventData/IndexSourceLink.hpp>
+#include <ActsExamples/EventData/MeasurementCalibration.hpp>
 
-#include "../deprecated/ConfiguredKalmanFitter.h"
 #include "Acts/Plugins/Podio/PodioTrackContainer.hpp"
 #include "Acts/Plugins/Podio/PodioTrackStateContainer.hpp"
 #include "Acts/Plugins/Podio/PodioUtil.hpp"
+#include "Acts/TrackFitting/GainMatrixSmoother.hpp"
+#include "Acts/TrackFitting/GainMatrixUpdater.hpp"
 #include "ActsLogHeplers.h"
+#include "PodioSurfaceIdConverter.h"
+#include "RefittingCalibrator.h"
 #include "TrackingTypes.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
 #include "podio_model/Measurement2DCollection.h"
 #include "podio_model/TrackCollection.h"
 #include "podio_model/TrackParametersCollection.h"
+#include "podio_model/TrackSeedCollection.h"
 #include "podio_model/TrajectoryCollection.h"
 
 namespace tdis::tracking {
+
+    struct SimpleReverseFilteringLogic {
+        double momentumThreshold = 0;
+
+        bool doBackwardFiltering(Acts::VectorMultiTrajectory::ConstTrackStateProxy trackState) const
+        {
+            auto momentum = std::abs(1 / trackState.filtered()[Acts::eBoundQOverP]);
+            return (momentum <= momentumThreshold);
+        }
+    };
+
 
 KalmanFittingFactory::KalmanFittingFactory() {
 
 }
 
 
-struct MapHelper : public Acts::PodioUtil::ConversionHelper {
-    std::optional<Acts::PodioUtil::Identifier> surfaceToIdentifier(const Acts::Surface& surface) const override {
-        for (auto&& [id, srf] : surfaces) {
-            if (srf == &surface) {
-                return id;
-            }
-        }
-        return {};
-    }
-
-    const Acts::Surface* identifierToSurface(Acts::PodioUtil::Identifier id) const override {
-        auto it = surfaces.find(id);
-        if (it == surfaces.end()) {
-            return nullptr;
-        }
-
-        return it->second;
-    }
-
-    Acts::PodioUtil::Identifier sourceLinkToIdentifier(const Acts::SourceLink& sl) override {
-        sourceLinks.push_back(sl);
-        return sourceLinks.size() - 1;
-    }
-
-    Acts::SourceLink identifierToSourceLink(Acts::PodioUtil::Identifier id) const override {
-        return sourceLinks.at(id);
-    }
-
-    std::unordered_map<Acts::PodioUtil::Identifier, const Acts::Surface*> surfaces;
-    std::vector<Acts::SourceLink> sourceLinks;
-};
-
-struct Factory {
-    using trajectory_t = Acts::MutablePodioTrackStateContainer;
-    using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
-
-    MapHelper m_helper;
-
-    Acts::MutablePodioTrackStateContainer create() {
-        return Acts::MutablePodioTrackStateContainer{m_helper};
-    }
-};
-
-
 void KalmanFittingFactory::Configure() {
     // Setup magnetic field
-    auto magneticField = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0, 0, m_bz() * Acts::UnitConstants::T));
+    auto magneticField = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
 
     // Configure EigenStepper, Navigator, and Propagator
     Stepper stepper(magneticField);
@@ -81,23 +53,270 @@ void KalmanFittingFactory::Configure() {
     // Initialize KalmanFitter
     //m_kalman_fitter = std::make_shared<KF>(*m_propagator);
 
-    m_logger = m_log_svc->logger("tracking:kf");
+    // Logging
+    m_log = m_log_svc->logger("tracking:kf");
 
-
-
-    // ---------- CSV ----------
-    m_csv.open(m_csv_out(), std::ios::out | std::ios::trunc);
-    if (!m_csv) {
-        throw std::runtime_error("Cannot open CSV output file " + m_csv_out());
-    }
-    m_csv << "#evt, mc_p_GeV, mc_theta_deg, mc_phi_deg,"
-             "reco_p_GeV, reco_theta_deg, reco_phi_deg,"
-             "chi2, ndof, chi2_per_ndof\n";
-
-    // ---------- ACTS logger ----------
+    // Acts logging
     auto lvl = strToActsLevel(m_acts_level());
-    m_acts_logger = Acts::getDefaultLogger("KF", lvl);
+    m_acts_logger = Acts::getDefaultLogger("tracking:kf", lvl);
+
+
 }
+
+void KalmanFittingFactory::fillMeasurements(
+    tdis::TrackSeed trackSeed,
+    std::shared_ptr<ActsExamples::MeasurementContainer>& actsMeasurements,
+    std::vector<Acts::SourceLink>& sourceLinks) {
+    auto geometry = m_acts_geo_svc->GetTrackingGeometry();
+
+    // Contexts
+    // auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
+    // Acts::MagneticFieldContext magContext;
+    // Acts::CalibrationContext calibContext;
+
+    actsMeasurements = std::make_shared<ActsExamples::MeasurementContainer>();
+
+    auto initTrackParams = trackSeed.getInitParams();
+    auto podioPerigee = trackSeed.getPerigee();
+
+    for (auto measurement : trackSeed.getMeasurements()) {
+        // There always should be at least 1 reconstructed hit attached to measurement
+        auto reconstructedHit = measurement.getHits().at(0);
+        auto mcHit = reconstructedHit.getRawHit();
+
+        m_log->info(
+            "   id={}, plane={:<4} ring={:<3} pad={:<3}, x={:<6.2f} y={:<6.2f}, z={:<6.2f}, "
+            "surf-id={}",
+            mcHit.id().index, mcHit.getPlane(), mcHit.getRing(), mcHit.getPad(), podioPerigee.x,
+            podioPerigee.y, podioPerigee.z, measurement.getSurface());
+
+        // This is a test that surfaces we think we have, are in tracking geometry
+        auto surfaceFromTrkGeo
+            = geometry->findSurface(Acts::GeometryIdentifier(measurement.getSurface()));
+        auto surfaceGeoId = surfaceFromTrkGeo->geometryId();
+        // ReSharper disable once CppDFAConstantConditions
+        if (surfaceFromTrkGeo == nullptr) {
+            auto msg = fmt::format(
+                "For ring = {}, we can't find back the surface with id = {}. It is "
+                "trackingGeometry->findSurface==NULL. Track fitting will fail soon (!)",
+                mcHit.getRing(), surfaceGeoId.volume());
+            m_log->critical(msg);
+            throw std::runtime_error(msg);
+        }
+
+        ActsExamples::IndexSourceLink sourceLink(surfaceGeoId, measurement.getObjectID().index);
+
+        sourceLinks.emplace_back(sourceLink);
+
+        // 1) Prepare the data vector (size=2)
+        Acts::Vector2 loc2D = Acts::Vector2::Zero();
+        loc2D[Acts::eBoundLoc0] = measurement.getLoc().a;
+        loc2D[Acts::eBoundLoc1] = measurement.getLoc().b;
+
+        // 2) Prepare the 2x2 covariance
+        Acts::SquareMatrix2 cov2D = Acts::SquareMatrix2::Zero();
+        cov2D(0, 0) = measurement.getCovariance().xx;
+        cov2D(1, 1) = measurement.getCovariance().yy;
+        cov2D(0, 1) = measurement.getCovariance().xy;
+        cov2D(1, 0) = measurement.getCovariance().xy;
+
+        // auto actsMeasurement = actsMeasurements->makeMeasurement<Acts::eBoundSize>(geoId);
+
+        actsMeasurements->emplaceMeasurement<2>(
+            surfaceGeoId, std::array{Acts::eBoundLoc0, Acts::eBoundLoc1},  // Subspace indices FIRST
+            loc2D,                                                         // Parameters vector
+            cov2D                                                          // Covariance matrix
+        );
+    }
+}
+
+
+void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
+
+
+    // Fill measurements from our trackSeed object
+    std::shared_ptr<ActsExamples::MeasurementContainer> actsMeasurements;
+    std::vector<Acts::SourceLink> sourceLinks;
+    fillMeasurements(trackSeed, actsMeasurements, sourceLinks);
+
+    if (sourceLinks.empty()) {
+        m_log->warn("Track seed ID='{}' has no measurements", trackSeed.id().index);
+        return;
+    }
+
+    // Create initial parameters at perigee
+    auto podioPerigee = trackSeed.getPerigee();
+    auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+          Acts::Vector3(podioPerigee.x, podioPerigee.y, podioPerigee.z)
+    );
+
+    // auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
+    //     Acts::Vector3(0,0,0)
+    // );
+
+    // Fill track initial parameters
+    auto podioInitParams = trackSeed.getInitParams();
+
+
+    Acts::BoundVector initBounds = Acts::BoundVector::Zero();
+    initBounds[Acts::eBoundPhi] = podioInitParams.getPhi();
+    initBounds[Acts::eBoundTheta] = podioInitParams.getTheta();
+    initBounds[Acts::eBoundQOverP] = podioInitParams.getQOverP();
+
+    Acts::BoundTrackParameters actsInitParams(
+        perigee,
+        initBounds,
+        Acts::BoundMatrix::Identity(),
+        Acts::ParticleHypothesis::proton()
+    );
+
+    m_log->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
+            1 / podioInitParams.getQOverP() / Acts::UnitConstants::GeV,
+            podioInitParams.getTheta() / Acts::UnitConstants::degree,
+            podioInitParams.getPhi() / Acts::UnitConstants::degree,
+            podioPerigee.z);
+
+
+
+    ActsExamples::PassThroughCalibrator calibrator;
+    ActsExamples::MeasurementCalibratorAdapter calibratorAdaptor(calibrator, *actsMeasurements);
+
+    // KalmanFitter fitter;
+    // DirectKalmanFitter directFitter;
+
+    Acts::GainMatrixUpdater kfUpdater;
+    Acts::GainMatrixSmoother kfSmoother;
+    SimpleReverseFilteringLogic reverseFilteringLogic;
+
+    bool multipleScattering = false;
+    bool energyLoss = false;
+    Acts::FreeToBoundCorrection freeToBoundCorrection;
+
+    auto geometry = m_acts_geo_svc->GetTrackingGeometry();
+    ActsExamples::IndexSourceLink::SurfaceAccessor slSurfaceAccessor{*geometry};
+
+
+    // Setup extensions
+    Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> extensions;
+    extensions.updater.connect<&Acts::GainMatrixUpdater::operator()<Acts::VectorMultiTrajectory>>(&kfUpdater);
+    extensions.smoother.connect<&Acts::GainMatrixSmoother::operator()<Acts::VectorMultiTrajectory>>(&kfSmoother);
+    extensions.reverseFilteringLogic.connect<&SimpleReverseFilteringLogic::doBackwardFiltering>(&reverseFilteringLogic);
+
+    // Options and contexts
+    // Contexts
+    auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
+    Acts::MagneticFieldContext magContext;
+    Acts::CalibrationContext calibContext;
+
+
+
+    const Acts::Surface* referenceSurface = nullptr;
+
+    bool doRefit = false;
+
+    // Create options
+    Acts::KalmanFitterOptions<Acts::VectorMultiTrajectory> kfOptions(
+        geoContext, magContext, calibContext, extensions,
+        Acts::PropagatorPlainOptions(geoContext, magContext), referenceSurface);
+
+    // Configure options
+    kfOptions.referenceSurfaceStrategy = Acts::KalmanFitterTargetSurfaceStrategy::first;
+    kfOptions.multipleScattering = multipleScattering;
+    kfOptions.energyLoss = energyLoss;
+    kfOptions.freeToBoundCorrection = freeToBoundCorrection;
+    kfOptions.extensions.calibrator.connect<&ActsExamples::MeasurementCalibratorAdapter::calibrate>(&calibratorAdaptor);
+
+    if (doRefit) {
+        kfOptions.extensions.surfaceAccessor.connect<&tdis::RefittingCalibrator::accessSurface>();
+    } else {
+        kfOptions.extensions.surfaceAccessor.connect<&ActsExamples::IndexSourceLink::SurfaceAccessor::operator()>(&slSurfaceAccessor);
+    }
+
+    // Output trajectories
+    // using trajectory_t = Acts::MutablePodioTrackStateContainer;
+    // using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
+    // PodioSurfaceIdConverter surfaceToIdConverter;
+    // Acts::MutablePodioTrackStateContainer trackStateContainer{surfaceToIdConverter};
+    // Acts::MutablePodioTrackContainer trackContainer{surfaceToIdConverter};
+    //
+    // Acts::TrackContainer tracks(trackContainer, trackStateContainer);
+
+    // Magnetic field map
+
+    // Setup magnetic field
+    auto magneticField = std::make_shared<Acts::ConstantBField>(Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
+
+    // Configure EigenStepper, Navigator, and Propagator
+    //~!tdis::Stepper stepper(magneticField);
+    //! Acts::Navigator::Config navCfg{m_acts_geo_svc->GetTrackingGeometry()};
+    //! Acts::Navigator navigator(navCfg);
+    // !m_propagator = std::make_shared<Propagator>(stepper, std::move(navigator));
+
+    // Stepper should be copied into the fitters
+    const Stepper stepper(std::move(magneticField));
+
+    // Standard fitter
+    Acts::Navigator::Config cfg;
+    cfg.trackingGeometry = geometry;
+    cfg.resolvePassive = false;
+    cfg.resolveMaterial = false;
+    cfg.resolveSensitive = true;
+
+    Acts::Navigator navigator(cfg, m_acts_logger->cloneWithSuffix("Navigator"));
+
+    Propagator propagator(stepper, std::move(navigator), m_acts_logger->cloneWithSuffix("Propagator"));
+    KalmanFitter trackFitter(std::move(propagator), m_acts_logger->cloneWithSuffix("Fitter"));
+
+    // Direct fitter
+    Acts::DirectNavigator directNavigator{m_acts_logger->cloneWithSuffix("DirectNavigator")};
+    DirectPropagator directPropagator(stepper, std::move(directNavigator), m_acts_logger->cloneWithSuffix("DirectPropagator"));
+    DirectKalmanFitter directTrackFitter(std::move(directPropagator), m_acts_logger->cloneWithSuffix("DirectFitter"));
+
+    Acts::VectorMultiTrajectory vTraj;
+    Acts::VectorTrackContainer  vTrk;
+    Acts::TrackContainer        tracks(vTrk, vTraj);
+
+    //return kfOptions;
+
+    // Run Kalman fit
+    auto result = trackFitter.fit(
+                sourceLinks.begin(),
+                sourceLinks.end(),
+                actsInitParams,
+                kfOptions,
+                tracks);
+
+    //auto result = trackFitter->fit(
+//                sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
+//    );
+    // 7) Run the Kalman fit => result
+    // auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
+    if (!result.ok()) {
+        m_log->error("Fit failed for trackSeed {}: {}", trackSeed.id().index, result.error().message());
+    //     continue;
+    } else {
+        // If you want to do anything with the resulting track proxy right now,
+        // you can retrieve it (but it's already in 'tracks'):
+        auto& trackProxy = result.value();
+        auto tip = trackProxy.tipIndex();
+        auto absMom = trackProxy.absoluteMomentum();
+        auto mcTrack = trackSeed.getMcTrack();
+        m_log->info("trackProxy.tipIndex() = {}", trackProxy.tipIndex());
+        m_log->info("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), absMom);
+        m_log->info("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
+        m_log->info("mcTrack.phi  = {} reco phi {}", mcTrack.getTheta(), trackProxy.phi());
+        m_log->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
+
+        m_log->debug("Successfully fitted track => track p {} in container",
+                        trackProxy.absoluteMomentum());
+    }
+    //
+    // if (!result.ok()) {
+    //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
+    // }
+    // TODO we should end here
+}
+
 
 void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
@@ -105,22 +324,6 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     auto geometry = m_acts_geo_svc->GetTrackingGeometry();
 
 
-    // Retrieve input data
-    const auto& mcTracks = *m_mc_tracks_input();
-    const auto& measurements = *m_measurements_input();
-
-    // Contexts
-    auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
-    Acts::MagneticFieldContext magContext;
-    Acts::CalibrationContext calibContext;
-
-    tdis::ConfiguredFitter::GeneralFitterOptions general_fitter_options = {
-        .geoContext = geoContext,
-        .magFieldContext = magContext,
-        .calibrationContext = calibContext,
-        .propOptions = Acts::PropagatorPlainOptions(geoContext, magContext)
-
-    };
 
     // ActsExamples::PassThroughCalibrator calibrator;
 
@@ -129,178 +332,34 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     //auto trackStateContainer = std::make_shared<Acts::VectorMultiTrajectory>();
 
 
-    using trajectory_t = Acts::MutablePodioTrackStateContainer;
-    using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
-    MapHelper helper;
-    Acts::MutablePodioTrackStateContainer trackStateContainer{helper};
-    Acts::MutablePodioTrackContainer trackContainer{helper};
-
-    Acts::TrackContainer tracks(trackContainer, trackStateContainer);
-
-
-    // KalmanFitter extensions with default componentss
-    Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> extensions;
-
-    // KalmanFitter options
-    Acts::KalmanFitterOptions kfOptions(
-        geoContext,
-        magContext,
-        calibContext,
-        extensions,
-        Acts::PropagatorPlainOptions(geoContext, magContext),
-        nullptr,    // No reference surface
-        true,       // Multiple scattering
-        true        // Energy loss
-    );
+    // using trajectory_t = Acts::MutablePodioTrackStateContainer;
+    // using const_trajectory_t = Acts::ConstPodioTrackStateContainer;
+    // PodioSurfaceIdConverter surfaceToIdConverter;
+    // Acts::MutablePodioTrackStateContainer trackStateContainer{surfaceToIdConverter};
+    // Acts::MutablePodioTrackContainer trackContainer{surfaceToIdConverter};
+    //
+    // Acts::TrackContainer tracks(trackContainer, trackStateContainer);
+    //
+    // // KalmanFitter extensions with default componentss
+    // Acts::KalmanFitterExtensions<Acts::VectorMultiTrajectory> kfExtensions;
+    //
+    // // KalmanFitter options
+    // Acts::KalmanFitterOptions kfOptions(
+    //     geoContext,
+    //     magContext,
+    //     calibContext,
+    //     kfExtensions,
+    //     Acts::PropagatorPlainOptions(geoContext, magContext),
+    //     nullptr,    // No reference surface
+    //     true,       // Multiple scattering
+    //     true        // Energy loss
+    // );
 
 
     // Process each MC track
-    for (const auto& mcTrack : mcTracks) {
+    for (const auto& trackSeed: *m_in_trackSeeds()) {
 
-        // create sourcelink and measurement containers
-        auto actsMeasurements = std::make_shared<ActsExamples::MeasurementContainer>();
-
-        int track_start_ring = 999999999;
-        double track_start_x = 0;
-        double track_start_y = 0;
-        double track_start_z = 0;
-
-        // Collect SourceLinks for this track's measurements
-        std::vector<Acts::SourceLink> sourceLinks;
-        m_logger->info("Track id={} colId={} Hits:", mcTrack.id().index, mcTrack.id().collectionID);
-        for (const auto& mcHit : mcTrack.getHits()) {
-            for (size_t i = 0; i < measurements.size(); ++i) {
-                const auto& measurement = measurements[i];
-                if (!measurement.getHits().empty() && measurement.getHits().at(0).getRawHit().id() == mcHit.id())
-                    { // Compare ids
-
-
-                    auto x = (double)mcHit.getTruePosition().x;
-                    auto y = (double)mcHit.getTruePosition().y;
-                    auto z = (double)mcHit.getTruePosition().z;
-
-                    auto reconstructedHit = measurement.getHits().at(0);
-
-
-                    if (mcHit.getRing() < track_start_ring) {
-
-                        track_start_x = reconstructedHit.getPosition().x;
-                        track_start_y = reconstructedHit.getPosition().y;
-                        track_start_z = reconstructedHit.getPosition().z;
-                        track_start_ring = mcHit.getRing();
-                    }
-
-                    m_logger->info("    id={}-{}, plane={}, ring={}, pad={}, x={}, y={}, z={}, surf-id={}",
-                        mcHit.id().collectionID, mcHit.id().index,
-                        mcHit.getPlane(), mcHit.getRing(), mcHit.getPad(),
-                        x, y, z, measurement.getSurface());
-
-                    // This is a test that surfaces we think we have, are in tracking geometry
-                    auto surfaceFromTrkGeo = geometry->findSurface(Acts::GeometryIdentifier(measurement.getSurface()));
-                    auto surfaceGeoId = surfaceFromTrkGeo->geometryId();
-                    if (!surfaceFromTrkGeo) {
-                        auto msg = fmt::format("For ring = {}, we can't find back the surface with id = {}. It is trackingGeometry->findSurface==NULL. Track fitting will fail soon (!)", mcHit.getRing(), surfaceGeoId.volume());
-                        m_logger->critical(msg);
-                        throw std::runtime_error(msg);
-                    }
-
-                    ActsExamples::IndexSourceLink sourceLink(surfaceGeoId, i);
-
-                    sourceLinks.emplace_back(sourceLink);
-
-
-                    // 1) Prepare the data vector (size=2)
-                    Acts::Vector2 loc2D = Acts::Vector2::Zero();
-                    loc2D[Acts::eBoundLoc0] = measurement.getLoc().a;
-                    loc2D[Acts::eBoundLoc1] = measurement.getLoc().b;
-
-                    // 2) Prepare the 2x2 covariance
-                    Acts::SquareMatrix2 cov2D = Acts::SquareMatrix2::Zero();
-                    cov2D(0, 0) = measurement.getCovariance().xx;
-                    cov2D(1, 1) = measurement.getCovariance().yy;
-                    cov2D(0, 1) = measurement.getCovariance().xy;
-                    cov2D(1, 0) = measurement.getCovariance().xy;
-
-                    //auto actsMeasurement = actsMeasurements->makeMeasurement<Acts::eBoundSize>(geoId);
-
-                    actsMeasurements->emplaceMeasurement<2>(
-                        surfaceGeoId,
-                        std::array{Acts::eBoundLoc0, Acts::eBoundLoc1},  // Subspace indices FIRST
-                        loc2D,                                    // Parameters vector
-                        cov2D                                     // Covariance matrix
-                    );
-                    break;
-                 }
-            }
-        }
-
-
-        if (sourceLinks.empty()) {
-            m_logger->warn("Track {} has no measurements", mcTrack.id().index);
-            continue;
-        }
-
-        // Convert truth parameters to initial parameters
-        const double p = mcTrack.getMomentum() * 1_GeV;
-        const double theta = mcTrack.getTheta() * Acts::UnitConstants::degree;
-        const double phi = mcTrack.getPhi() * Acts::UnitConstants::degree;
-        const double vz = mcTrack.getVertexZ();
-
-        // Create initial parameters at perigee
-        auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-             Acts::Vector3(track_start_x, track_start_y, track_start_z)
-        );
-
-        // auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-        //     Acts::Vector3(0,0,0)
-        // );
-        Acts::BoundVector params = Acts::BoundVector::Zero();
-        params[Acts::eBoundPhi] = phi;
-        params[Acts::eBoundTheta] = theta;
-        params[Acts::eBoundQOverP] = 1.0 / p;
-
-        Acts::BoundTrackParameters startParams(
-            perigee, params, Acts::BoundMatrix::Identity(),
-            Acts::ParticleHypothesis::proton()
-        );
-
-        m_logger->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
-               p / Acts::UnitConstants::GeV, theta / Acts::UnitConstants::degree,
-               phi / Acts::UnitConstants::degree, vz);
-
-
-        ActsExamples::PassThroughCalibrator pcalibrator;
-        ActsExamples::MeasurementCalibratorAdapter calibrator(pcalibrator, *actsMeasurements);
-
-        // Run Kalman fit
-        //auto result = m_kalman_fitter->fit(
-        //            sourceLinks.begin(), sourceLinks.end(), startParams, kfOptions, tracks
-        //);
-        // 7) Run the Kalman fit => result
-        // auto result = (*m_fitter)(sourceLinks, startParams, general_fitter_options, calibrator, tracks);
-        // if (!result.ok()) {
-        //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index,
-        //                     result.error().message());
-        //     continue;
-        // } else {
-        //     // If you want to do anything with the resulting track proxy right now,
-        //     // you can retrieve it (but it's already in 'tracks'):
-        //     auto& trackProxy = result.value();
-        //     auto tip = trackProxy.tipIndex();
-        //     auto absMom = trackProxy.absoluteMomentum();
-        //     m_logger->info("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), absMom);
-        //     m_logger->info("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
-        //     m_logger->info("mcTrack.phi  = {} reco phi {}", mcTrack.getTheta(), trackProxy.phi());
-        //     m_logger->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
-        //
-        //     m_logger->debug("Successfully fitted track => track p {} in container",
-        //                     trackProxy.absoluteMomentum());
-        // }
-        //
-        // if (!result.ok()) {
-        //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
-        // }
-        // TODO we should end here
+        processTrack(trackSeed);
     }
 
     // // Store results
