@@ -42,6 +42,7 @@
 #include <spdlog/spdlog.h>
 
 #include <Acts/Definitions/Units.hpp>
+#include <algorithm>
 #include <cctype>
 #include <iostream>
 #include <string>
@@ -341,6 +342,12 @@ namespace tdis::io {
             m_log->warn("Could not parse track hit. WE SHOULDN'T BE HERE. Near line: {}", m_current_line_index);
             return Result::FailureFinished;
         }
+
+        // Sort hits by time (ascending) before copying to PODIO
+        std::sort(track.hits.begin(), track.hits.end(), 
+                  [](const DigitizedReadoutHit& a, const DigitizedReadoutHit& b) {
+                      return a.time < b.time;
+                  });
 
         // Copy data to PODIO
         DigitizedMtpcMcTrackCollection podioTracks;
