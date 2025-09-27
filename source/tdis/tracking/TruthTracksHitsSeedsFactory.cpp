@@ -43,30 +43,29 @@ namespace tdis::tracking {
         namespace ActsUnits = Acts::UnitConstants;
 
         // Create output collections
-        auto seeds = std::make_unique<tdis::TrackSeedCollection>();
-        auto tracker_hits = std::make_unique<tdis::TrackerHitCollection>();
-        auto measurements = std::make_unique<tdis::Measurement2DCollection>();
-        auto track_parameters = std::make_unique<tdis::TrackParametersCollection>();
+        // auto seeds = std::make_unique<tdis::TrackSeedCollection>();
+        // auto tracker_hits = std::make_unique<tdis::TrackerHitCollection>();
+        // auto measurements = std::make_unique<tdis::Measurement2DCollection>();
+        // auto track_parameters = std::make_unique<tdis::TrackParametersCollection>();
 
         auto plane_positions = m_service_geometry->GetPlanePositions();
 
         m_log->trace("TruthTrackSeedFactory, processing event: {}", event_index);
 
         // Loop over MC tracks
-        for (const auto& mc_track: *m_in_tracks()) {
+        for (const auto& mc_track: *m_in_mcTracks()) {
 
             // Skip tracks without enough hits
             if(mc_track.hits_size() < m_cfg_minHitsForSeed()) {
-                m_log->debug("Skipping track with {} hits (< minimum {})",
-                    mc_track.hits_size(), m_cfg_minHitsForSeed());
+                m_log->warn("Skipping track with {} hits (< minimum {})", mc_track.hits_size(), m_cfg_minHitsForSeed());
                 continue;
             }
 
             // -------------------------------
             // Step 1: Create TrackerHits and Measurements from MC hits
             // -------------------------------
-            std::vector<tdis::TrackerHit> track_hits;
-            std::vector<tdis::Measurement2D> track_measurements;
+            std::vector<tdis::TrackerHit> trackHits;
+            std::vector<tdis::Measurement2D> trackMeasurements;
 
             for (const auto& mcHit : mc_track.getHits()) {
                 // Basic geometry indices
@@ -85,22 +84,23 @@ namespace tdis::tracking {
                 double planeZ = plane_positions[plane];
                 double hitCalcZ = planeZ + (plane % 2 ? -z_to_gem : z_to_gem);
 
+                // Flag if true position should be used
+                // Input files may not provide the true position of hits
+                bool shouldUseTruePos = m_cfg_useTrueHitPos() && !std::isnan(mcHit.getTruePosition().x);
+
                 // Choose position: either true or digitized
-                tdis::Vector3f position;
-                double onSurfaceTolerance;      // This tolerance is used in globalToLocal conversion
-                if (m_cfg_useTrueHitPos() && !std::isnan(mcHit.getTruePosition().x)) {
+                Vector3f position;
+                if (shouldUseTruePos) {
                     position = mcHit.getTruePosition();
-                    onSurfaceTolerance = getPadApproxWidth(ring);   // tolerance ~pad size
                 } else {
                     position.x = static_cast<float>(padX);
                     position.y = static_cast<float>(padY);
                     position.z = static_cast<float>(hitCalcZ);
-                    onSurfaceTolerance = 1*Acts::UnitConstants::mm; // with pads centers we should be precise
                 }
 
                 // Covariance estimate
-                double max_dimension = std::max(getPadApproxWidth(ring), getPadHight());
-                double xy_variance = get_variance(max_dimension);
+                double maxPadDim = std::max(getPadApproxWidth(ring), getPadHight());
+                double xy_variance = get_variance(maxPadDim);
                 tdis::CovDiag3f cov{
                     static_cast<float>(xy_variance),
                     static_cast<float>(xy_variance),
@@ -110,32 +110,37 @@ namespace tdis::tracking {
                 uint32_t cell_id = 1'000'000 * plane + 1'000 * ring + pad;
 
                 // Create TrackerHit
-                auto hit = tracker_hits->create(
-                    cell_id,
-                    position,
-                    cov,
-                    static_cast<float>(mcHit.getTime()),
-                    static_cast<float>(1*ActsUnits::ms),   // Time resolution
-                    static_cast<float>(mcHit.getAdc()),
-                    0.0F
-                );
+                auto hit = m_out_trackerHits()->create();
+                hit.setTime(cell_id);
+                hit.setPosition(position);
+                hit.setPositionError(cov);
+                hit.setTime(cell_id);
+                hit.setTimeError(1*ActsUnits::ms);   // Time resolution
+                hit.setEdep(mcHit.getAdc());
+                hit.setEdepError(0.0F);
                 hit.setRawHit(mcHit);
-                track_hits.push_back(hit);
+
+                trackHits.push_back(hit);
 
                 // Create Measurement2D
-                auto acts_det_element = m_service_geometry().GetDetectorCylinder(ring);
-                auto& surfaceRef = acts_det_element->surface();
+                auto actsDetElement = m_service_geometry().GetDetectorCylinder(ring);
+                auto& surfaceRef = actsDetElement->surface();
                 auto geometryId = surfaceRef.geometryId().value();
 
                 // Convert to local coordinates
                 Acts::Vector2 loc = Acts::Vector2::Zero();
 
+                // If pad centers are used for hit position,
+                // pad centers are always lay on cylinders so we take small tolerance
+                // But if we take true positions they might be off from surface in pad dims
+                // This tolerance is used in globalToLocal conversion
+                double onSurfaceTolerance = shouldUseTruePos? maxPadDim : 1*Acts::UnitConstants::mm;
 
                 try {
                     Acts::Vector2 pos = surfaceRef
                         .globalToLocal(
                             Acts::GeometryContext(),
-                            {position.x, position.y, planeZ},
+                            {position.x, position.y, position.z},
                             Acts::Vector3::Zero(),
                             onSurfaceTolerance
                         ).value();
@@ -151,7 +156,7 @@ namespace tdis::tracking {
                 }
 
                 // Create measurement
-                auto meas2D = measurements->create();
+                auto meas2D = m_out_measurements()->create();
                 meas2D.setSurface(geometryId);
                 meas2D.setLoc({static_cast<float>(loc[0]), static_cast<float>(loc[1])});
                 meas2D.setTime(hit.getTime());
@@ -162,12 +167,12 @@ namespace tdis::tracking {
                 });
                 meas2D.addToWeights(1.0);
                 meas2D.addToHits(hit);
-                track_measurements.push_back(meas2D);
+                trackMeasurements.push_back(meas2D);
             }
 
             // Skip if we didn't create enough valid hits/measurements
-            if (track_hits.size() < m_cfg_minHitsForSeed()) {
-                m_log->debug("Skipping track with {} valid hits after processing", track_hits.size());
+            if (trackHits.size() < m_cfg_minHitsForSeed()) {
+                m_log->debug("Skipping track with {} valid hits after processing", trackHits.size());
                 continue;
             }
 
@@ -217,7 +222,7 @@ namespace tdis::tracking {
             double charge = 1;  // TODO: get from MC track
 
             // Create TrackParameters
-            auto track_param = track_parameters->create();
+            auto track_param = m_out_trackParams->create();
             track_param.setType(-1); // seed
             track_param.setLoc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))});
             track_param.setPhi(phi);
@@ -237,7 +242,7 @@ namespace tdis::tracking {
             // -------------------------------
             // Step 3: Create TrackSeed
             // -------------------------------
-            auto seed = seeds->create();
+            auto seed = m_out_seeds()->create();
 
             // Set perigee (PCA point)
             seed.setPerigee({static_cast<float>(xpca),
@@ -245,11 +250,11 @@ namespace tdis::tracking {
                             static_cast<float>(zpca)});
 
             // Add hits (use first N hits as seed hits, typically 3)
-            int n_seed_hits = std::min(3, static_cast<int>(track_hits.size()));
+            int n_seed_hits = std::min(3, static_cast<int>(trackHits.size()));
             for (int i = 0; i < n_seed_hits; ++i) {
-                seed.addToHits(track_hits[i]);
-                if (i < track_measurements.size()) {
-                    seed.addToMeasurements(track_measurements[i]);
+                seed.addToHits(trackHits[i]);
+                if (i < trackMeasurements.size()) {
+                    seed.addToMeasurements(trackMeasurements[i]);
                 }
             }
 
@@ -262,10 +267,10 @@ namespace tdis::tracking {
         }
 
         // Move collections to output
-        m_out_seeds() = std::move(seeds);
-        m_out_trackerHits() = std::move(tracker_hits);
-        m_out_measurements() = std::move(measurements);
-        m_out_trackParams() = std::move(track_parameters);
+        // m_out_seeds() = std::move(seeds);
+        // m_out_trackerHits() = std::move(tracker_hits);
+        // m_out_measurements() = std::move(measurements);
+        // m_out_trackParams() = std::move(track_parameters);
 
         m_log->debug("Created {} seeds from MC tracks", m_out_seeds()->size());
     }

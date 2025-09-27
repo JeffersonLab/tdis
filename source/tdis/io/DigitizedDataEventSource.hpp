@@ -353,10 +353,10 @@ namespace tdis::io {
         DigitizedMtpcMcTrackCollection podioTracks;
         DigitizedMtpcMcHitCollection podioHits;
         auto podioTrack = podioTracks.create();
-        podioTrack.setPhi(track.phi);
-        podioTrack.setTheta(track.theta);
-        podioTrack.setVertexZ(track.vertexZ);
-        podioTrack.setMomentum(track.momentum);
+        podioTrack.setPhi(track.phi * Acts::UnitConstants::degree);
+        podioTrack.setTheta(track.theta * Acts::UnitConstants::degree);
+        podioTrack.setVertexZ(track.vertexZ * Acts::UnitConstants::m);
+        podioTrack.setMomentum(track.momentum * Acts::UnitConstants::GeV);
         for(auto& hit: track.hits) {
 
             auto podioHit = podioHits.create();
@@ -381,7 +381,7 @@ namespace tdis::io {
         event.InsertCollection<EventInfo>(std::move(info), "EventInfo");
         event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTracks");
         event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHits");
-        m_log->info("Event has been emitted at {}", m_event_line_index);
+        m_log->debug("Event has been read starting at line: {}", m_event_line_index);
         return Result::Success;
     }
 
