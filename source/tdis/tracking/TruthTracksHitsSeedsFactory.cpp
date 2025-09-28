@@ -173,8 +173,8 @@ namespace tdis::tracking {
         
         // Note: If vertex is not available or we want to use first hit for debugging,
         // uncomment the following:
-        // auto firstHit = mc_track.getHits().at(0).getTruePosition();
-        // vx = firstHit.x; vy = firstHit.y; vz = firstHit.z;
+        auto firstHit = mc_track.getHits().at(0).getTruePosition();
+        vx = firstHit.x; vy = firstHit.y; vz = firstHit.z;
         
         // Momentum direction unit vector
         double px = std::sin(theta) * std::cos(phi);
@@ -223,13 +223,14 @@ namespace tdis::tracking {
         track_param.setTime(mc_track.getHits().at(0).getTime());
         
         // Set covariance matrix for track parameters
+        // Parameters are already variances in natural units
         tdis::Cov6f cov;
-        cov(0,0) = 1.0;   // loc0
-        cov(1,1) = 1.0;   // loc1
-        cov(2,2) = 0.05;  // phi
-        cov(3,3) = 0.01;  // theta
-        cov(4,4) = 0.1;   // qOverP
-        cov(5,5) = 10e6;  // time
+        cov(0,0) = m_cfg_covLoc0() * ActsUnits::mm * ActsUnits::mm;           // loc0 variance [mm^2]
+        cov(1,1) = m_cfg_covLoc1() * ActsUnits::mm * ActsUnits::mm;           // loc1 variance [mm^2]
+        cov(2,2) = m_cfg_covPhi();                                            // phi variance [rad^2]
+        cov(3,3) = m_cfg_covTheta();                                          // theta variance [rad^2]
+        cov(4,4) = m_cfg_covQOverP() / (ActsUnits::GeV * ActsUnits::GeV);     // q/p variance [(e/GeV)^2]
+        cov(5,5) = m_cfg_covTime() * ActsUnits::ns * ActsUnits::ns;           // time variance [ns^2]
         track_param.setCovariance(cov);
         
         // Create TrackSeed
@@ -237,18 +238,12 @@ namespace tdis::tracking {
         
         // Set perigee point (PCA to beamline)
         seed.setPerigee({
-            static_cast<float>(xpca),
-            static_cast<float>(ypca),
-            static_cast<float>(zpca)
+            static_cast<float>(vx),
+            static_cast<float>(vy),
+            static_cast<float>(vz)
         });
-        
-        // Add hits to the seed (no artificial limitation)
-        int n_seed_hits = std::min(
-            m_cfg_maxHitsForSeed(), 
-            static_cast<int>(trackHits.size())
-        );
-        
-        for (int i = 0; i < n_seed_hits; ++i) {
+
+        for (int i = 0; i < trackHits.size(); ++i) {
             seed.addToHits(trackHits[i]);
             if (i < trackMeasurements.size()) {
                 seed.addToMeasurements(trackMeasurements[i]);
@@ -260,7 +255,7 @@ namespace tdis::tracking {
         seed.setMcTrack(mc_track);
         
         m_log->trace("Created seed with {} hits, vertex z={:.2f}, perigee PCA=({:.2f}, {:.2f}, {:.2f}), p={:.3f} GeV",
-                   n_seed_hits, vz, xpca, ypca, zpca, smearedMomentum);
+                   trackHits.size(), vz, xpca, ypca, zpca, smearedMomentum);
         
         return seed;
     }

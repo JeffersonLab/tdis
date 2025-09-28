@@ -48,8 +48,41 @@ namespace tdis::tracking {
         };
         Parameter<int> m_cfg_maxHitsForSeed{this,
             "acts:seed:max_hits",
-            20,
-            "Maximum number of hits to include in a seed"
+            3,
+            "Maximum number of hits to include in a seed (typically 3-5 for initial seeding)"
+        };
+
+        // Covariance matrix parameters for initial track parameters
+        // Note: These are VARIANCES (squared uncertainties)
+        Parameter<double> m_cfg_covLoc0{this,
+            "acts:seed:cov:loc0",
+            1.0,
+            "[mm^2] Variance for local position 0 (impact parameter)"
+        };
+        Parameter<double> m_cfg_covLoc1{this,
+            "acts:seed:cov:loc1",
+            1.0,
+            "[mm^2] Variance for local position 1 (z position at perigee)"
+        };
+        Parameter<double> m_cfg_covPhi{this,
+            "acts:seed:cov:phi",
+            0.05,
+            "[rad^2] Variance for phi angle"
+        };
+        Parameter<double> m_cfg_covTheta{this,
+            "acts:seed:cov:theta",
+            0.01,
+            "[rad^2] Variance for theta angle"
+        };
+        Parameter<double> m_cfg_covQOverP{this,
+            "acts:seed:cov:qoverp",
+            0.1,
+            "[(e/GeV)^2] Variance for charge over momentum"
+        };
+        Parameter<double> m_cfg_covTime{this,
+            "acts:seed:cov:time",
+            1.0e10,
+            "[ns^2] Variance for time"
         };
 
         std::shared_ptr<spdlog::logger> m_log;

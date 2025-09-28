@@ -11,6 +11,7 @@
 #include "Acts/TrackFitting/GainMatrixSmoother.hpp"
 #include "Acts/TrackFitting/GainMatrixUpdater.hpp"
 #include "ActsLogHeplers.h"
+#include "PadGeometryHelper.hpp"
 #include "PodioSurfaceIdConverter.h"
 #include "RefittingCalibrator.h"
 #include "TrackingTypes.h"
@@ -57,7 +58,8 @@ void KalmanFittingFactory::Configure() {
     m_log = m_log_svc->logger("tracking:kf");
 
     // Acts logging
-    auto lvl = strToActsLevel(m_acts_level());
+    auto actsLvlStr = m_acts_level();
+    auto lvl = strToActsLevel(actsLvlStr);
     m_acts_logger = Acts::getDefaultLogger("tracking:kf", lvl);
 
 
@@ -85,10 +87,13 @@ void KalmanFittingFactory::fillMeasurements(
         auto mcHit = reconstructedHit.getRawHit();
 
         m_log->info(
-            "   id={}, plane={:<4} ring={:<3} pad={:<3}, x={:<6.2f} y={:<6.2f}, z={:<6.2f}, "
-            "surf-id={}",
-            mcHit.id().index, mcHit.getPlane(), mcHit.getRing(), mcHit.getPad(), podioPerigee.x,
-            podioPerigee.y, podioPerigee.z, measurement.getSurface());
+            "   id={:<4} plane={:<3} ring={:<3} pad={:<3}, x={:<7.2f} y={:<7.2f}, z={:<7.2f}, Perigee.z={:<6.2f} surf-id={}",
+            mcHit.id().index, mcHit.getPlane(), mcHit.getRing(), mcHit.getPad(),
+            mcHit.getTruePosition().x / Acts::UnitConstants::mm,
+            mcHit.getTruePosition().y / Acts::UnitConstants::mm,
+            mcHit.getTruePosition().z / Acts::UnitConstants::mm,
+            podioPerigee.z / Acts::UnitConstants::mm,
+            measurement.getSurface());
 
         // This is a test that surfaces we think we have, are in tracking geometry
         auto surfaceFromTrkGeo
@@ -133,6 +138,12 @@ void KalmanFittingFactory::fillMeasurements(
 
 void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
 
+    // Options and contexts
+    // Contexts
+    auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
+    Acts::MagneticFieldContext magContext;
+    Acts::CalibrationContext calibContext;
+
 
     // Fill measurements from our trackSeed object
     std::shared_ptr<ActsExamples::MeasurementContainer> actsMeasurements;
@@ -157,18 +168,107 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     // Fill track initial parameters
     auto podioInitParams = trackSeed.getInitParams();
 
+    const auto& firstMeas = trackSeed.getMeasurements().at(0);
 
-    Acts::BoundVector initBounds = Acts::BoundVector::Zero();
-    initBounds[Acts::eBoundPhi] = podioInitParams.getPhi();
-    initBounds[Acts::eBoundTheta] = podioInitParams.getTheta();
-    initBounds[Acts::eBoundQOverP] = podioInitParams.getQOverP();
 
-    Acts::BoundTrackParameters actsInitParams(
-        perigee,
-        initBounds,
-        Acts::BoundMatrix::Identity(),
-        Acts::ParticleHypothesis::proton()
-    );
+    auto firstMcHit = trackSeed.getMcTrack().getHits().at(0);
+    auto secondMcHit = trackSeed.getMcTrack().getHits().at(1);
+
+    if (!firstMcHit.isAvailable() || !secondMcHit.isAvailable()) {
+        m_log->warn("!firstMcHit.isAvailable() || !secondMcHit.isAvailable() - skipping track");
+        return;
+    }
+    using SurfacePtr = std::shared_ptr<const Acts::Surface>;
+
+    SurfacePtr startSurf =
+        m_acts_geo_svc->GetDetectorCylinder(firstMcHit.getRing())->surface().getSharedPtr();
+
+    if (!startSurf) {
+        m_log->critical("startSurf is null for surface id {}", firstMeas.getSurface());
+        return;
+    }
+
+    //Acts::BoundVector initBounds = Acts::BoundVector::Zero();
+    // initBounds[Acts::eBoundPhi] = podioInitParams.getPhi();
+    // initBounds[Acts::eBoundTheta] = podioInitParams.getTheta();
+    // initBounds[Acts::eBoundQOverP] = podioInitParams.getQOverP();
+
+    // Acts::BoundVector init = Acts::BoundVector::Zero();
+    // init[Acts::eBoundLoc0]  = firstMeas.getLoc().a;
+    // init[Acts::eBoundLoc1]  = firstMeas.getLoc().b;
+    // init[Acts::eBoundPhi]   = podioInitParams.getPhi();
+    // init[Acts::eBoundTheta] = podioInitParams.getTheta();
+    // init[Acts::eBoundQOverP]= podioInitParams.getQOverP();
+    // init[Acts::eBoundTime]  = podioInitParams.getTime();
+
+
+    // Acts::BoundTrackParameters actsInitParams(
+    //     perigee,
+    //     initBounds,
+    //     Acts::BoundMatrix::Identity(),
+    //     Acts::ParticleHypothesis::proton()
+    // );
+
+    // Acts::BoundTrackParameters actsInitParams(
+    // startSurf, init, cov, Acts::ParticleHypothesis::proton());
+
+    tdis::Cov6f cov = podioInitParams.getCovariance();
+    //cov(0,0) = m_cfg_covLoc0() * ActsUnits::mm * ActsUnits::mm;           // loc0 variance [mm^2]
+    //cov(1,1) = m_cfg_covLoc1() * ActsUnits::mm * ActsUnits::mm;           // loc1 variance [mm^2]
+    //cov(2,2) = m_cfg_covPhi();                                            // phi variance [rad^2]
+    //cov(3,3) = m_cfg_covTheta();                                          // theta variance [rad^2]
+    //cov(4,4) = m_cfg_covQOverP() / (ActsUnits::GeV * ActsUnits::GeV);     // q/p variance [(e/GeV)^2]
+    // cov(5,5) = m_cfg_covTime() * ActsUnits::ns * ActsUnits::ns;           // time
+    // variance [ns^2]
+
+    // Direction from first two true hits (normalize!)
+    Eigen::Vector3d dir3{double(secondMcHit.getTruePosition().x-firstMcHit.getTruePosition().x),
+                         double(secondMcHit.getTruePosition().y-firstMcHit.getTruePosition().y),
+                         double(secondMcHit.getTruePosition().z-firstMcHit.getTruePosition().z)};
+    if (dir3.norm() == 0.) {
+        m_log->warn("Two identical MC hit positions; cannot define direction.");
+        return;
+    }
+    dir3.normalize();
+
+    // Map your PODIO covariance to ACTS order and init to zero first
+    Acts::BoundSquareMatrix actsCov = Acts::BoundSquareMatrix::Zero();
+    const auto C = podioInitParams.getCovariance();
+    // PODIO order: [loc0, loc1, theta, phi, q/p, time]
+    // ACTS order : [loc0, loc1,  phi, theta, q/p, time]
+    actsCov(Acts::eBoundLoc0,   Acts::eBoundLoc0)   = C(0,0);
+    actsCov(Acts::eBoundLoc1,   Acts::eBoundLoc1)   = C(1,1);
+    actsCov(Acts::eBoundPhi,    Acts::eBoundPhi)    = C(3,3);
+    actsCov(Acts::eBoundTheta,  Acts::eBoundTheta)  = C(2,2);
+    actsCov(Acts::eBoundQOverP, Acts::eBoundQOverP) = C(4,4);
+    actsCov(Acts::eBoundTime,   Acts::eBoundTime)   = C(5,5);
+
+    auto alternateInitParams = Acts::BoundTrackParameters::create(
+        geoContext,
+        startSurf,
+        {
+            firstMcHit.getTruePosition().x,
+            firstMcHit.getTruePosition().y,
+            firstMcHit.getTruePosition().z,
+            firstMcHit.getTime()
+        },
+        dir3,
+        podioInitParams.getQOverP(),
+        actsCov,
+        Acts::ParticleHypothesis::proton(),
+   2*getPadHight());
+
+    if (!alternateInitParams.ok()) {
+        m_log->warn("!alternateInitParams.ok()");
+        m_log->warn(alternateInitParams.error().message());
+        return;
+    }
+    // Acts::BoundTrackParameters actsInitParams(
+    //      perigee,
+    //      initBounds,
+    //      Acts::BoundMatrix::Identity(),
+    //      Acts::ParticleHypothesis::proton()
+    // );
 
     m_log->info("Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
             1 / podioInitParams.getQOverP() / Acts::UnitConstants::GeV,
@@ -202,11 +302,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     extensions.smoother.connect<&Acts::GainMatrixSmoother::operator()<Acts::VectorMultiTrajectory>>(&kfSmoother);
     extensions.reverseFilteringLogic.connect<&SimpleReverseFilteringLogic::doBackwardFiltering>(&reverseFilteringLogic);
 
-    // Options and contexts
-    // Contexts
-    auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
-    Acts::MagneticFieldContext magContext;
-    Acts::CalibrationContext calibContext;
+
 
 
 
@@ -225,6 +321,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     kfOptions.energyLoss = energyLoss;
     kfOptions.freeToBoundCorrection = freeToBoundCorrection;
     kfOptions.extensions.calibrator.connect<&ActsExamples::MeasurementCalibratorAdapter::calibrate>(&calibratorAdaptor);
+    kfOptions.referenceSurfaceStrategy = Acts::KalmanFitterTargetSurfaceStrategy::last;
 
     if (doRefit) {
         kfOptions.extensions.surfaceAccessor.connect<&tdis::RefittingCalibrator::accessSurface>();
@@ -282,7 +379,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     auto result = trackFitter.fit(
                 sourceLinks.begin(),
                 sourceLinks.end(),
-                actsInitParams,
+                alternateInitParams.value(),
                 kfOptions,
                 tracks);
 
@@ -304,17 +401,49 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         m_log->info("trackProxy.tipIndex() = {}", trackProxy.tipIndex());
         m_log->info("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), absMom);
         m_log->info("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
-        m_log->info("mcTrack.phi  = {} reco phi {}", mcTrack.getTheta(), trackProxy.phi());
+        m_log->info("mcTrack.phi  = {} reco phi {}", mcTrack.getPhi(), trackProxy.phi());
         m_log->info("reco chi2 {} nDoF {} chi2/ndof {}", trackProxy.chi2(), trackProxy.nDoF(), trackProxy.chi2()/ trackProxy.nDoF());
 
         m_log->debug("Successfully fitted track => track p {} in container",
                         trackProxy.absoluteMomentum());
+
+        const auto& params = trackProxy.parameters();
+        double qOverP = params[Acts::eBoundQOverP];
+        double momentum = std::abs(1.0 / qOverP);
+        double theta = params[Acts::eBoundTheta];
+        double phi = params[Acts::eBoundPhi];
+
+        m_log->info("qOverP = params[Acts::eBoundQOverP]; = {}", qOverP);
+        m_log->info("momentum = std::abs(1.0 / qOverP); = {}", momentum);
+        m_log->info("theta = params[Acts::eBoundTheta]; = {}", theta);
+        m_log->info("phi = params[Acts::eBoundPhi]; = {}", phi);
+
+        for (auto state : trackProxy.trackStatesReversed()) {
+            if (state.hasSmoothed()) {
+                m_log->info("Smoothed params at {}: loc0={}, loc1={}, phi={}, theta={}, qOverP={}, momentum={}",
+                            state.index(),
+                            state.smoothed()[Acts::eBoundLoc0],
+                            state.smoothed()[Acts::eBoundLoc1],
+                            state.smoothed()[Acts::eBoundPhi],
+                            state.smoothed()[Acts::eBoundTheta],
+                            state.smoothed()[Acts::eBoundQOverP],
+                            1/state.smoothed()[Acts::eBoundQOverP]);
+            }
+        }
+
+        m_log->info("N STATES: {}", trackProxy.nTrackStates());
+        m_log->info("N MEAS: {}", trackProxy.nMeasurements());
+        m_log->info("N OUTLIERS: {}", trackProxy.nOutliers());
+        m_log->info("N HOLES: {}", trackProxy.nHoles());
+
     }
     //
     // if (!result.ok()) {
     //     m_logger->error("Fit failed for track {}: {}", mcTrack.id().index, result.error().message());
     // }
     // TODO we should end here
+
+
 }
 
 
