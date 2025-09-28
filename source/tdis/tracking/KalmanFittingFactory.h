@@ -52,9 +52,9 @@ namespace tdis::tracking {
         PodioInput<tdis::TrackSeed> m_in_trackSeeds{this, {"TrackSeeds"}};
 
         // Add EDM4eic outputs
-        PodioOutput<tdis::Trajectory> m_edm_trajectories{this};
-        PodioOutput<tdis::TrackParameters> m_edm_track_params{this};
-        PodioOutput<tdis::Track> m_edm_tracks{this};
+        PodioOutput<tdis::Trajectory> m_out_trajectories{this};
+        PodioOutput<tdis::TrackParameters> m_out_track_params{this};
+        PodioOutput<tdis::Track> m_out_tracks{this};
 
         Service<ActsGeometryService> m_acts_geo_svc{this};
         Service<services::LogService> m_log_svc{this};

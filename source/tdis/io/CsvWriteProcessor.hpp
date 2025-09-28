@@ -50,14 +50,12 @@ private:
     std::ofstream m_trackFile;
     std::ofstream m_hitFile;
 
-
     // Logging
     std::shared_ptr<spdlog::logger> m_log;
 
-
     void writeTrackHeader() {
         fmt::print(m_trackFile,
-            "evt,"              // 0 - event number/index
+            "evt,"       // 0 - event number/index
             "trk_id,"           // 1 - track index
             "mc_mom,"           // 2 - MC total momentum
             "mc_phi,"           // 3 - MC phi angle at start
