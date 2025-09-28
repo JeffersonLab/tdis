@@ -3,9 +3,11 @@
 #include <JANA/Components/JOmniFactory.h>
 #include <JANA/JFactory.h>
 #include <random>
+#include <optional>
 
 #include "ActsGeometryService.h"
 #include "podio_model/DigitizedMtpcMcTrack.h"
+#include "podio_model/DigitizedMtpcMcHit.h"
 #include "podio_model/Measurement2D.h"
 #include "podio_model/TrackParameters.h"
 #include "podio_model/TrackSeed.h"
@@ -44,6 +46,11 @@ namespace tdis::tracking {
             3,
             "Minimum number of hits to create a seed"
         };
+        Parameter<int> m_cfg_maxHitsForSeed{this,
+            "acts:seed:max_hits",
+            20,
+            "Maximum number of hits to include in a seed"
+        };
 
         std::shared_ptr<spdlog::logger> m_log;
         std::mt19937 m_generator;
@@ -53,5 +60,32 @@ namespace tdis::tracking {
         
     private:
         double generateNormal(double mean, double stddev);
+        
+        /**
+         * Creates both TrackerHit and Measurement2D from a single MC hit
+         * Combines common logic for both object creation
+         * @return pair of optional TrackerHit and Measurement2D (nullopt if creation failed)
+         */
+        std::pair<std::optional<tdis::TrackerHit>, std::optional<tdis::Measurement2D>> 
+        createHitAndMeasurement(
+            const tdis::DigitizedMtpcMcHit& mcHit,
+            int plane,
+            uint64_t event_index,
+            const std::vector<double>& plane_positions);
+        
+        /**
+         * Creates TrackSeed with embedded TrackParameters from MC track information
+         * Handles momentum smearing and track parameter creation
+         * Calculates Point of Closest Approach (PCA) to beamline for proper perigee parameters
+         * @param mc_track The MC track to process
+         * @param trackHits Vector of hits associated with this track
+         * @param trackMeasurements Vector of measurements associated with this track
+         * @return Created TrackSeed with initialized parameters
+         * @throws std::runtime_error if track parameter creation fails
+         */
+        tdis::TrackSeed createTrackSeedWithParameters(
+            const tdis::DigitizedMtpcMcTrack& mc_track,
+            const std::vector<tdis::TrackerHit>& trackHits,
+            const std::vector<tdis::Measurement2D>& trackMeasurements);
     };
 }
