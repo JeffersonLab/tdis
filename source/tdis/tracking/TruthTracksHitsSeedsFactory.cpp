@@ -214,7 +214,7 @@ namespace tdis::tracking {
         double charge = 1;  // TODO: get from MC track when available
         
         // Create TrackParameters at the perigee
-        auto track_param = m_out_trackParams->create();
+        auto track_param = m_out_trackParams()->create();
         track_param.setType(-1); // seed type
         track_param.setLoc({static_cast<float>(localpos(0)), static_cast<float>(localpos(1))});
         track_param.setPhi(phi);
