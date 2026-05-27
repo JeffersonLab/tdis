@@ -331,7 +331,7 @@ public:
                 firstHit.getTruePosition().z
             );
         } else {
-            fmt::print(m_seedFile, ",,,,,,,,,");
+            fmt::print(m_seedFile, ",,,,,,,,");
         }
         fmt::print(m_seedFile, "\n");
     }
