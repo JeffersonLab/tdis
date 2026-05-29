@@ -59,7 +59,7 @@ namespace tdis::tracking {
         Service<services::LogService> m_log_svc{this};
 
         // Use parameters:
-        Parameter<double> m_cfg_bz{this, "bz", 1.5, "Magnetic field in Z (Tesla)"};
+        Parameter<double> m_cfg_bz{this, "bz", 2.8, "Magnetic field in Z (Tesla)"};
         Parameter<std::string> m_acts_level{this, "acts_level", "INFO", "ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)"};
 
 

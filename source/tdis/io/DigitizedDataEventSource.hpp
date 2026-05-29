@@ -2,36 +2,39 @@
 // Subject to the terms in the LICENSE file found in the top-level directory.
 
 /**
- *  This file contains EventSource for text files containing TDIS digitized tracks in text format
- *  Each track starts with "Event <event number>* don't be confused, one event - one track here
- *  Then goes a line with track info, 4 variables as
- *      1. Momentum (GeV/c)
- *      2. Theta (degrees)
- *      3. Phi (degrees)
- *      4. Z vertex (m)
- *  Then a line for each hit
- *    - Time of arrival at Pad (ns)
- *    - Amplitude (ADC bin of sampa)
- *    - Ring (id of rin, 0 is innermost).
- *    - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
- *    - Plane(id of z plane from 0 upstream  to 9 downstream)
- *    - ZtoGEM (m)
- *    - TrueX (m?)?
- *    - TrueY (m?)?
- *    - TrueZ (m?)?
- *  (?) Some files do not have TrueXYZ information
+ *  EventSource for text files containing TDIS digitised tracks.
  *
- *   Example of how it looks:
-  Event 200000
-	0.922362	89.49	-156.71	-0.0605
-	312.855	2.05888e-08	0	68	3	0.0100347
-	312.577	7.19261e-08	0	68	3	0.0100256
-	285.625	2.7713e-08	20	68	3	0.0091457
-	...
-  Event 200001
-        ...
+ *  File format
+ *  -----------
+ *  Each track begins with an "Event <N>" header line (one event = one track).
+ *  The next line holds four track-level values:
+ *      1. Momentum  (GeV/c)
+ *      2. Theta     (degrees)
+ *      3. Phi       (degrees)
+ *      4. Z vertex  (m)
+ *
+ *  Each subsequent line is one hit:
+ *      1. Time of arrival at pad  (ns)
+ *      2. Amplitude               (ADC bin of SAMPA)
+ *      3. Ring   (0 = innermost)
+ *      4. Pad    (0 at φ=0, clockwise)
+ *      5. Plane  (0 upstream … 9 downstream)
+ *      6. ZtoGEM (m)
+ *      7. TrueX  (m)   ← optional; absent in some files
+ *      8. TrueY  (m)   ← optional
+ *      9. TrueZ  (m)   ← optional
+ *
+ *  Example:
+ *
+ *  Event 200000
+ *    0.922362   89.49  -156.71  -0.0605
+ *    312.855  2.05888e-08  0  68  3  0.0100347
+ *    312.577  7.19261e-08  0  68  3  0.0100256
+ *    ...
+ *  Event 200001
+ *    ...
+ */
 
- **/
 #pragma once
 
 #include <JANA/JEvent.h>
@@ -54,363 +57,381 @@
 
 namespace tdis::io {
 
-    /** POD structure for readout hits **/
-    struct DigitizedReadoutHit {
-        double time;     // - Time of arrival at Pad (ns)
-        double adc;      // - Amplitude (ADC bin of sample)
-        int ring;        // - Ring (id of rin, 0 is innermost).
-        int pad;         // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-        int plane;       // - Plane(id of z plane from 0 upstream to 9 downstream)
-        double zToGem;   // - ZtoGEM (m)
-        double true_x;   // - True hit x info (quiet_NaN() if not provided)
-        double true_y;   // - True hit y info (quiet_NaN() if not provided)
-        double true_z;   // - True hit z info (quiet_NaN() if not provided)
-    };
+// ---------------------------------------------------------------------------
+// POD helpers for in-memory representation before copying to PODIO objects
+// ---------------------------------------------------------------------------
 
-    /** POD structure for readout track **/
-    struct DigitizedReadoutTrack {
-        double momentum;    // (GeV/c)
-        double theta;       // (degrees)
-        double phi;         // (degrees)
-        double vertexZ;     // (m)
-        std::vector<DigitizedReadoutHit> hits;
-    };
+struct DigitizedReadoutHit {
+    double time;    // Time of arrival at pad (ns)
+    double adc;     // Amplitude (ADC bin of SAMPA)
+    int    ring;    // Ring index (0 = innermost)
+    int    pad;     // Pad index (0 at φ=0, clockwise)
+    int    plane;   // Plane index (0 upstream … 9 downstream)
+    double zToGem;  // Distance to GEM (m)
+    double true_x;  // True hit X (m); quiet_NaN when not provided
+    double true_y;  // True hit Y (m); quiet_NaN when not provided
+    double true_z;  // True hit Z (m); quiet_NaN when not provided
+};
 
-    /** Digitized files in text format EventSource */
-    class DigitizedDataEventSource : public JEventSource {
+struct DigitizedReadoutTrack {
+    double momentum;  // (GeV/c)
+    double theta;     // (degrees)
+    double phi;       // (degrees)
+    double vertexZ;   // (m)
+    std::vector<DigitizedReadoutHit> hits;
+};
 
-        std::ifstream m_input_file;
-        size_t m_current_line_index = 0;
-        std::shared_ptr<spdlog::logger> m_log;
+// ---------------------------------------------------------------------------
+// Event source
+// ---------------------------------------------------------------------------
 
-    public:
-        DigitizedDataEventSource();
+class DigitizedDataEventSource : public JEventSource {
 
-        DigitizedDataEventSource(std::string fileName, JApplication* app);
+    std::ifstream m_input_file;
+    size_t        m_current_line_index = 0;
+    std::shared_ptr<spdlog::logger> m_log;
 
-        ~DigitizedDataEventSource() override = default;
+public:
+    DigitizedDataEventSource();
+    DigitizedDataEventSource(std::string fileName, JApplication* app);
+    ~DigitizedDataEventSource() override = default;
 
-        /// Initializes class (after all JANA2 services are ready to serve)
-        void Init() override;
+    /// Called after all JANA2 services are ready.
+    void Init() override;
 
-        /// Opens file to read
-        void Open() override;
+    /// Opens the input file.
+    void Open() override;
 
-        /// Closes the file
-        void Close() override;
+    /// Closes the input file.
+    void Close() override;
 
-        /// Read file and forms an event based on it
-        Result Emit(JEvent&) override;
+    /// Reads one event from the file.
+    Result Emit(JEvent&) override;
 
-        /// Do we need it at all?
-        static std::string GetDescription();
+    static std::string GetDescription();
 
-        Parameter<int> m_tracks_per_event{this, "DigitizedDataEventSource:tracks_per_event", 1, "Number of tracks to combine per event"};
-        Service<services::LogService> m_log_svc{this};
-    private:
+    Parameter<int> m_tracks_per_event{
+        this,
+        "DigitizedDataEventSource:tracks_per_event",
+        1,
+        "Number of tracks to combine per event"};
 
-        /// Parses string tokens to form DigitizedReadoutHit
-        bool ParseTrackHit(const std::vector<std::string>& tokens, DigitizedReadoutHit& result);
+    Service<services::LogService> m_log_svc{this};
 
-        /// Parses string tokens to form DigitizedReadoutTrack
-        bool ParseTrackHeader(const std::vector<std::string>& tokens, DigitizedReadoutTrack& result);
-    };
+private:
+    /// Parses a hit line token vector into a DigitizedReadoutHit.
+    bool ParseTrackHit(const std::vector<std::string>& tokens,
+                       DigitizedReadoutHit&             result);
 
+    /// Parses a track-header token vector into a DigitizedReadoutTrack.
+    bool ParseTrackHeader(const std::vector<std::string>& tokens,
+                          DigitizedReadoutTrack&           result);
+};
 
-    // Implementation section starts here
+// ===========================================================================
+// Implementation
+// ===========================================================================
 
-    inline DigitizedDataEventSource::DigitizedDataEventSource() : JEventSource() {
-        SetTypeName(NAME_OF_THIS);  // Provide JANA with class name
-        SetCallbackStyle(CallbackStyle::ExpertMode);
+inline DigitizedDataEventSource::DigitizedDataEventSource() : JEventSource() {
+    SetTypeName(NAME_OF_THIS);
+    SetCallbackStyle(CallbackStyle::ExpertMode);
+}
+
+inline DigitizedDataEventSource::DigitizedDataEventSource(
+    std::string fileName, JApplication* app)
+    : JEventSource(fileName, app)
+{
+    SetTypeName(NAME_OF_THIS);
+    SetCallbackStyle(CallbackStyle::ExpertMode);
+}
+
+inline void DigitizedDataEventSource::Init() {
+    m_log = m_log_svc->logger("DigitizedDataEventSource");
+    // FIX (minor): original fmt::print call had a format placeholder but
+    // passed the log level string as the second argument to m_log->info
+    // using the wrong overload.  Use a proper format string instead.
+    m_log->info("Log level: {}", services::LogLevelToString(m_log->level()));
+    m_log->info("Tracks per event: {}", m_tracks_per_event());
+}
+
+inline void DigitizedDataEventSource::Open() {
+    m_input_file = std::ifstream(this->GetResourceName());
+    if (!m_input_file.is_open()) {
+        auto msg = fmt::format("Could not open file: '{}'", this->GetResourceName());
+        m_log->error(msg);
+        throw std::runtime_error(msg);
     }
+}
 
-    inline DigitizedDataEventSource::DigitizedDataEventSource(std::string fileName, JApplication* app): JEventSource(fileName, app) {
-        SetTypeName(NAME_OF_THIS);  // Provide JANA with class name
-        SetCallbackStyle(CallbackStyle::ExpertMode);
+inline void DigitizedDataEventSource::Close() {
+    m_input_file.close();
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers (file-local linkage)
+// ---------------------------------------------------------------------------
+
+inline void PrintStreamError(const std::ifstream& file) {
+    if (file.bad()) {
+        std::cerr << "Stream badbit set — possible hardware I/O error.\n";
+    } else if (file.fail()) {
+        if (file.eof())
+            std::cerr << "Reached end of file.\n";
+        else
+            std::cerr << "Logical I/O error (failbit set).\n";
+    } else if (file.eof()) {
+        std::cout << "End of file reached.\n";
     }
+}
 
-    inline void DigitizedDataEventSource::Init() {
-        auto app = GetApplication();
-        m_log = m_log_svc->logger("DigitizedDataEventSource");
-        m_log->info("Our log level is: ", services::LogLevelToString(m_log->level()));
-        m_log->info("Number tracks per event is: {}", m_tracks_per_event());
+static std::vector<std::string> SplitDataString(const std::string& line) {
+    std::vector<std::string> tokens;
+    const char* str = line.data();
+    const char* end = str + line.size();
+
+    while (str < end) {
+        // Skip leading whitespace
+        while (str < end && std::isspace(static_cast<unsigned char>(*str)))
+            ++str;
+
+        if (str >= end) break;
+
+        const char* token_start = str;
+        while (str < end && !std::isspace(static_cast<unsigned char>(*str)))
+            ++str;
+
+        tokens.emplace_back(token_start, str - token_start);
     }
+    return tokens;
+}
 
-    inline void DigitizedDataEventSource::Open() {
-        // Open the file
-        m_input_file = std::ifstream(this->GetResourceName());
+/// Reads lines for the next event.
+/// The "Event <N>" header line is consumed but not included in the returned
+/// vector.  The first returned line is the track-parameter line.
+static std::vector<std::string> ReadNextEventLines(std::ifstream& input_file) {
+    std::vector<std::string> lines;
 
-        // Check if the file was successfully opened
-        if (!m_input_file.is_open()) {
-            auto message= fmt::format("Error: Could not open the file: '{}'", this->GetResourceName());
-            m_log->error(message);
-            throw std::runtime_error(message);
-        }
-    }
+    while (true) {
+        if (!input_file)
+            return lines;
 
-    inline void DigitizedDataEventSource::Close() {
-        // Close the file pointer here!
-        m_input_file.close();
-    }
+        std::string line;
+        std::getline(input_file, line);
 
-    inline void PrintStreamError(const std::ifstream& file) {
-        if (file.bad()) {
-            std::cerr << "Stream has a badbit set. This could indicate a serious I/O error, such as hardware failure." << std::endl;
-        } else if (file.fail()) {
-            if (file.eof()) {
-                std::cerr << "Reached end of file." << std::endl;
-            } else {
-                std::cerr << "Logical error on i/o operation (failbit set)." << std::endl;
-            }
-        } else if (file.eof()) {
-            std::cout << "End of file reached." << std::endl;
-        }
-    }
-
-
-    static std::vector<std::string> SplitDataString(const std::string& line) {
-        std::vector<std::string> tokens;
-        const char* str = line.data();
-        const char* end = str + line.size();
-
-        while (str < end) {
-            // Skip leading whitespace
-            while (str < end && std::isspace(static_cast<unsigned char>(*str))) {
-                ++str;
-            }
-
-            if (str >= end) break;
-
-            // Start of the token
-            const char* token_start = str;
-
-            // Find the end of the token
-            while (str < end && !std::isspace(static_cast<unsigned char>(*str))) {
-                ++str;
-            }
-
-            // Extract the token and add it to the vector
-            tokens.emplace_back(token_start, str - token_start);
-        }
-
-        return tokens;
-    }
-
-
-    static std::vector<std::string> ReadNextEventLines(std::ifstream& input_file) {
-        std::vector<std::string> lines;
-
-        while (true) {
-            if (!input_file) {
-                return lines;
-            }
-
-            // Read the file line by line
-            std::string line;
-            std::getline(input_file, line);
-
-            if (line.starts_with("Event")) {
-                if (lines.empty()) {
-                    // This probably means the beginning of file, the first event
-                    continue;
-                }
-                // This means we read till the next events
-                return lines;
-            }
-
-            lines.emplace_back(line);
-        }
-    }
-
-    inline bool DigitizedDataEventSource::ParseTrackHeader(const std::vector<std::string>& tokens, DigitizedReadoutTrack& result) {
-        if (tokens.size() < 4) {
-            m_log->warn("Could not parse track info. Incorrect tokens number {}. Near line: {}", tokens.size(), m_current_line_index);
-            return false;
-        }
-
-        result.momentum = std::stod(tokens[0]);  // (GeV/c)
-        result.theta = std::stod(tokens[1]);     // (degrees)
-        result.phi = std::stod(tokens[2]);       // (degrees)
-        result.vertexZ = std::stod(tokens[3]);   // (m)
-        return true;
-    }
-
-    inline bool DigitizedDataEventSource::ParseTrackHit(const std::vector<std::string>& tokens, DigitizedReadoutHit& result) {
-        if (tokens.empty()) {
-            m_log->info("Could not parse track hit. Tokens are empty. Empty line? Near line: {}", m_current_line_index);
-            return false;
-        }
-        if (tokens.size() < 6) {
-            m_log->warn("Could not parse track hit. Incorrect tokens number {}. Near line: {}", tokens.size(), m_current_line_index);
-            return false;
-        }
-
-        if(tokens.size() == 6) {
-            // Files with no true X Y Z hit info
-            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
-            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
-            result.ring   = std::stoi(tokens[2]);    // - Ring (id of rin, 0 is innermost).
-            result.pad    = std::stoi(tokens[3]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-            result.plane  = std::stoi(tokens[4]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
-            result.zToGem = std::stod(tokens[5]);    // - ZtoGEM (m)
-
-            // True hit information is not set
-            result.true_x = std::numeric_limits<double>::quiet_NaN();
-            result.true_y = std::numeric_limits<double>::quiet_NaN();
-            result.true_z = std::numeric_limits<double>::quiet_NaN();
-        } else {
-            result.time   = std::stod(tokens[0]);    // - Time of arrival at Pad (ns)
-            result.adc    = std::stod(tokens[1]);    // - Amplitude (ADC bin of sample)
-            result.true_x = std::stod(tokens[2]);    // True X Y Z of hit
-            result.true_y = std::stod(tokens[3]);
-            result.true_z = std::stod(tokens[4]);
-            result.ring   = std::stoi(tokens[5]);    // - Ring (id of rin, 0 is innermost).
-            result.pad    = std::stoi(tokens[6]);    // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
-            result.plane  = std::stoi(tokens[7]);    // - Plane(id of z plane from 0 upstream  to 9 downstream)
-            result.zToGem = std::stod(tokens[8]);    // - ZtoGEM (m)
-        }
-
-        return true;
-    }
-
-    inline JEventSource::Result DigitizedDataEventSource::Emit(JEvent& event) {
-        // Calls to GetEvent are synchronized with each other, which means they can
-        // read and write state on the JEventSource without causing race conditions.
-
-        static size_t current_event_number = 0;
-        event.SetEventNumber(current_event_number++);
-        event.SetRunNumber(22);
-
-        auto lines = ReadNextEventLines(m_input_file);
-        m_log->debug("Number of lines per event: {}", lines.size());
-
-        if (lines.empty()) {
-            if (m_input_file.bad() || m_input_file.fail() || m_input_file.eof()) {
-                PrintStreamError(m_input_file);
-            } else {
-                m_log->error("Event is empty. Near line: {}", m_current_line_index);
-            }
-
-            return Result::FailureFinished;
-        }
-
-        size_t m_event_line_index = m_current_line_index;
-
-        // (!) Each new event starts with Event word, which is thrown out by ReadNextEventLines
-        // but we need to count it in m_current_line_index
-        m_current_line_index++;
-
-        // First line is alsways track/event header
-        if (lines.size() == 1) {
-            m_log->debug("Empty event at line (near): {}\n", m_current_line_index);
-            m_current_line_index++;
-            return Result::FailureTryAgain;
-        }
-
-        // First we parse event into DigitizedReadoutTrack with DigitizedReadoutHits
-        // Then we will copy it to PODIO structures
-        // We do this extra step because in future we want to merge tracks in various ways
-
-        // Parse track
-        DigitizedReadoutTrack track{};
-        try {
-            auto tokens = SplitDataString(lines[0]);
-            if(!ParseTrackHeader(tokens, track)) {
-                return Result::FailureFinished;
-            }
-
-            for (auto i = 1; i < lines.size(); ++i) {
-                DigitizedReadoutHit hit{};
-                tokens = SplitDataString(lines[i]);
-                if(!ParseTrackHit(tokens, hit)) {
-                    continue;
-                }
-                track.hits.emplace_back(hit);
-            }
-
-            m_current_line_index += lines.size();
-        } catch (...) {
-            fmt::print("Error parsing event/track. Near line: {}\n", m_current_line_index);
-            throw;
-        }
-
-        // Double check that we have some track with some hits
-        if(track.hits.empty()) {
-            m_log->warn("Could not parse track hit. WE SHOULDN'T BE HERE. Near line: {}", m_current_line_index);
-            return Result::FailureFinished;
-        }
-
-        // Sort hits by time (ascending) before copying to PODIO
-        std::sort(track.hits.begin(), track.hits.end(), 
-                  [](const DigitizedReadoutHit& a, const DigitizedReadoutHit& b) {
-                      return a.time < b.time;
-                  });
-
-        // Copy data to PODIO
-        DigitizedMtpcMcTrackCollection podioTracks;
-        DigitizedMtpcMcHitCollection podioHits;
-        auto podioTrack = podioTracks.create();
-        podioTrack.setPhi(track.phi * Acts::UnitConstants::degree);
-        podioTrack.setTheta(track.theta * Acts::UnitConstants::degree);
-        podioTrack.setVertexZ(track.vertexZ * Acts::UnitConstants::m);
-        podioTrack.setMomentum(track.momentum * Acts::UnitConstants::GeV);
-        for(auto& hit: track.hits) {
-
-            if (hit.ring == -999 || hit.ring == 999 || hit.pad == -999 || hit.pad == 999) {
-                m_log->warn("hit ring={} pad={} plane={} at m_event_line_index={} at event={}. "
-                            "(!) Hit will be skipped and will not appear in any further processing",
-                            hit.ring, hit.pad, hit.plane, m_event_line_index, event.GetEventNumber());
+        if (line.starts_with("Event")) {
+            if (lines.empty()) {
+                // Beginning of file — this is the very first Event header.
                 continue;
             }
-
-            auto podioHit = podioHits.create();
-            podioHit.setTime(   hit.time * Acts::UnitConstants::ns  );
-            podioHit.setAdc(    hit.adc   );
-            podioHit.setRing(   hit.ring  );
-            podioHit.setPad(    hit.pad   );
-            podioHit.setPlane(  hit.plane );
-            podioHit.setZToGem( hit.zToGem  * Acts::UnitConstants::m);
-
-            // Calculate
-            auto [padX, padY] = getPadCenter(hit.ring, hit.pad);
-            podioHit.setPadCenterX(padX);
-            podioHit.setPadCenterY(padY);
-
-            tdis::Vector3f true_pos = tdis::Vector3f{
-                static_cast<float>(hit.true_x * Acts::UnitConstants::m),
-                static_cast<float>(hit.true_y * Acts::UnitConstants::m),
-                static_cast<float>(hit.true_z * Acts::UnitConstants::m)
-            };
-            podioHit.setTruePosition(true_pos);
-            podioTrack.addToHits(podioHit);
+            // We have already collected lines for the current event and have
+            // now read the header of the *next* event.  Return what we have.
+            return lines;
         }
 
-        EventInfoCollection info;
-        info.push_back(MutableEventInfo(0, 0, 0)); // event nr, timeslice nr, run nr
-        event.InsertCollection<EventInfo>(std::move(info), "EventInfo");
-        event.InsertCollection<DigitizedMtpcMcTrack>(std::move(podioTracks), "DigitizedMtpcMcTracks");
-        event.InsertCollection<DigitizedMtpcMcHit>(std::move(podioHits), "DigitizedMtpcMcHits");
-        m_log->debug("Event has been read starting at line: {}", m_event_line_index);
-        return Result::Success;
+        lines.emplace_back(line);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ParseTrackHeader
+// ---------------------------------------------------------------------------
+inline bool DigitizedDataEventSource::ParseTrackHeader(
+    const std::vector<std::string>& tokens,
+    DigitizedReadoutTrack&           result)
+{
+    if (tokens.size() < 4) {
+        m_log->warn("Cannot parse track header: expected ≥4 tokens, got {} near line {}",
+                    tokens.size(), m_current_line_index);
+        return false;
+    }
+    result.momentum = std::stod(tokens[0]);   // GeV/c
+    result.theta    = std::stod(tokens[1]);   // degrees
+    result.phi      = std::stod(tokens[2]);   // degrees
+    result.vertexZ  = std::stod(tokens[3]);   // m
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// ParseTrackHit
+// ---------------------------------------------------------------------------
+inline bool DigitizedDataEventSource::ParseTrackHit(
+    const std::vector<std::string>& tokens,
+    DigitizedReadoutHit&             result)
+{
+    if (tokens.empty()) {
+        m_log->info("Empty hit line near line {}", m_current_line_index);
+        return false;
+    }
+    if (tokens.size() < 6) {
+        m_log->warn("Cannot parse hit: expected ≥6 tokens, got {} near line {}",
+                    tokens.size(), m_current_line_index);
+        return false;
     }
 
-    inline std::string DigitizedDataEventSource::GetDescription() {
-        // GetDescription() helps JANA explain to the user what is going on
-        return "Digitized TDIS MTPC .txt file event source";
+    if (tokens.size() == 6) {
+        // Older files without true XYZ
+        result.time   = std::stod(tokens[0]);   // ns
+        result.adc    = std::stod(tokens[1]);   // ADC counts
+        result.ring   = std::stoi(tokens[2]);
+        result.pad    = std::stoi(tokens[3]);
+        result.plane  = std::stoi(tokens[4]);
+        result.zToGem = std::stod(tokens[5]);   // m
+
+        result.true_x = std::numeric_limits<double>::quiet_NaN();
+        result.true_y = std::numeric_limits<double>::quiet_NaN();
+        result.true_z = std::numeric_limits<double>::quiet_NaN();
+    } else {
+        // Newer files with true XYZ (columns 2-4)
+        result.time   = std::stod(tokens[0]);   // ns
+        result.adc    = std::stod(tokens[1]);   // ADC counts
+        result.true_x = std::stod(tokens[2]);   // m
+        result.true_y = std::stod(tokens[3]);   // m
+        result.true_z = std::stod(tokens[4]);   // m
+        result.ring   = std::stoi(tokens[5]);
+        result.pad    = std::stoi(tokens[6]);
+        result.plane  = std::stoi(tokens[7]);
+        result.zToGem = std::stod(tokens[8]);   // m
     }
-} // namespace tdis
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Emit
+// ---------------------------------------------------------------------------
+inline JEventSource::Result DigitizedDataEventSource::Emit(JEvent& event) {
+    // Emit() is called from a single thread, so static state is safe here.
+    static size_t current_event_number = 0;
+    event.SetEventNumber(current_event_number++);
+    event.SetRunNumber(22);
+
+    auto lines = ReadNextEventLines(m_input_file);
+    m_log->debug("Lines read for this event: {}", lines.size());
+
+    if (lines.empty()) {
+        if (m_input_file.bad() || m_input_file.fail() || m_input_file.eof())
+            PrintStreamError(m_input_file);
+        else
+            m_log->error("Empty event near line {}", m_current_line_index);
+        return Result::FailureFinished;
+    }
+
+    const size_t m_event_line_index = m_current_line_index;
+    // Account for the "Event <N>" header line consumed by ReadNextEventLines
+    m_current_line_index++;
+
+    if (lines.size() == 1) {
+        // Track header present but no hits — skip silently
+        m_log->debug("Empty event (no hits) near line {}", m_current_line_index);
+        m_current_line_index++;
+        return Result::FailureTryAgain;
+    }
+
+    // -----------------------------------------------------------------------
+    // Parse into intermediate POD structures
+    // -----------------------------------------------------------------------
+    DigitizedReadoutTrack track{};
+    try {
+        // First line: track header
+        auto tokens = SplitDataString(lines[0]);
+        if (!ParseTrackHeader(tokens, track))
+            return Result::FailureFinished;
+
+        // Remaining lines: hits
+        for (size_t i = 1; i < lines.size(); ++i) {
+            DigitizedReadoutHit hit{};
+            tokens = SplitDataString(lines[i]);
+            if (ParseTrackHit(tokens, hit))
+                track.hits.emplace_back(hit);
+        }
+
+        m_current_line_index += lines.size();
+
+    } catch (...) {
+        fmt::print("Error parsing event/track near line {}\n", m_current_line_index);
+        throw;
+    }
+
+    if (track.hits.empty()) {
+        m_log->warn("No valid hits parsed near line {}", m_current_line_index);
+        return Result::FailureFinished;
+    }
+
+    // Sort hits by time (ascending)
+    std::sort(track.hits.begin(), track.hits.end(),
+              [](const DigitizedReadoutHit& a, const DigitizedReadoutHit& b) {
+                  return a.time < b.time;
+              });
+
+    // -----------------------------------------------------------------------
+    // Copy to PODIO collections, converting units to ACTS natural units
+    // -----------------------------------------------------------------------
+    DigitizedMtpcMcTrackCollection podioTracks;
+    DigitizedMtpcMcHitCollection   podioHits;
+
+    auto podioTrack = podioTracks.create();
+    podioTrack.setPhi(    track.phi      * Acts::UnitConstants::degree);
+    podioTrack.setTheta(  track.theta    * Acts::UnitConstants::degree);
+    podioTrack.setVertexZ(track.vertexZ  * Acts::UnitConstants::m);
+    podioTrack.setMomentum(track.momentum * Acts::UnitConstants::GeV);
+
+    for (const auto& hit : track.hits) {
+
+        // Skip sentinel (out-of-acceptance) hits
+        if (hit.ring == -999 || hit.ring == 999 ||
+            hit.pad  == -999 || hit.pad  == 999)
+        {
+            m_log->warn(
+                "Sentinel hit (ring={}, pad={}, plane={}) at event {} line {} — skipped",
+                hit.ring, hit.pad, hit.plane,
+                event.GetEventNumber(), m_event_line_index);
+            continue;
+        }
+
+        auto podioHit = podioHits.create();
+        podioHit.setTime(   hit.time   * Acts::UnitConstants::ns);
+        podioHit.setAdc(    hit.adc);
+        podioHit.setRing(   hit.ring);
+        podioHit.setPad(    hit.pad);
+        podioHit.setPlane(  hit.plane);
+        podioHit.setZToGem( hit.zToGem * Acts::UnitConstants::m);
+
+        auto [padX, padY] = getPadCenter(hit.ring, hit.pad);
+        podioHit.setPadCenterX(padX);
+        podioHit.setPadCenterY(padY);
+
+        tdis::Vector3f truePos{
+            static_cast<float>(hit.true_x * Acts::UnitConstants::m),
+            static_cast<float>(hit.true_y * Acts::UnitConstants::m),
+            static_cast<float>(hit.true_z * Acts::UnitConstants::m)
+        };
+        podioHit.setTruePosition(truePos);
+        podioTrack.addToHits(podioHit);
+    }
+
+    EventInfoCollection info;
+    info.push_back(MutableEventInfo(0, 0, 0));
+    event.InsertCollection<EventInfo>(            std::move(info),        "EventInfo");
+    event.InsertCollection<DigitizedMtpcMcTrack>( std::move(podioTracks), "DigitizedMtpcMcTracks");
+    event.InsertCollection<DigitizedMtpcMcHit>(   std::move(podioHits),   "DigitizedMtpcMcHits");
+
+    m_log->debug("Event {} read from file starting at line {}",
+                 event.GetEventNumber(), m_event_line_index);
+    return Result::Success;
+}
+
+inline std::string DigitizedDataEventSource::GetDescription() {
+    return "Digitised TDIS MTPC text-file event source";
+}
+
+} // namespace tdis::io
 
 
-
-// The template specialization needs to be in the global namespace (or at least not inside the tdis namespace)
+// ---------------------------------------------------------------------------
+// CheckOpenable specialisation (global namespace required by JANA2)
+// ---------------------------------------------------------------------------
 template <>
-inline double JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>::CheckOpenable(std::string resource_name) {
-  // CheckOpenable() decides how confident we are that this EventSource can handle this resource.
-  //    0.0        -> 'Cannot handle'
-  //    (0.0, 1.0] -> 'Cean handle, with this confidence level'
-
-  // To determine confidence level, feel free to open up the file and check for magic bytes or metadata.
-  // Returning a confidence <- {0.0, 1.0} is perfectly OK!
-    bool is_correct_ext = resource_name.ends_with("txt");
-    return  is_correct_ext? 1.0 : 0.0;
+inline double JEventSourceGeneratorT<tdis::io::DigitizedDataEventSource>::CheckOpenable(
+    std::string resource_name)
+{
+    return resource_name.ends_with("txt") ? 1.0 : 0.0;
 }
