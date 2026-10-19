@@ -40,11 +40,13 @@
 #include <JANA/JEvent.h>
 #include <JANA/JEventSource.h>
 #include <JANA/JEventSourceGeneratorT.h>
+#include <JANA/JException.h>
 
 #include <Acts/Definitions/Units.hpp>
 #include <algorithm>
 #include <cctype>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -363,14 +365,14 @@ inline JEventSource::Result DigitizedDataEventSource::Emit(JEvent& event) {
               });
 
     // -----------------------------------------------------------------------
-    // Copy to PODIO collections, converting units to ACTS natural units
+    // Store EDM units: angles in radians, lengths in mm, times in ns.
     // -----------------------------------------------------------------------
     DigitizedMtpcMcTrackCollection podioTracks;
     DigitizedMtpcMcHitCollection   podioHits;
 
     auto podioTrack = podioTracks.create();
-    podioTrack.setPhi(    track.phi      * Acts::UnitConstants::degree);
-    podioTrack.setTheta(  track.theta    * Acts::UnitConstants::degree);
+    podioTrack.setPhi(track.phi * Acts::UnitConstants::degree);
+    podioTrack.setTheta(track.theta * Acts::UnitConstants::degree);
     podioTrack.setVertexZ(track.vertexZ  * Acts::UnitConstants::m);
     podioTrack.setMomentum(track.momentum * Acts::UnitConstants::GeV);
 
@@ -388,7 +390,7 @@ inline JEventSource::Result DigitizedDataEventSource::Emit(JEvent& event) {
         }
 
         auto podioHit = podioHits.create();
-        podioHit.setTime(   hit.time   * Acts::UnitConstants::ns);
+        podioHit.setTime(hit.time);  // Input and EDM both use ns; convert at the ACTS boundary.
         podioHit.setAdc(    hit.adc);
         podioHit.setRing(   hit.ring);
         podioHit.setPad(    hit.pad);
@@ -409,7 +411,15 @@ inline JEventSource::Result DigitizedDataEventSource::Emit(JEvent& event) {
     }
 
     EventInfoCollection info;
-    info.push_back(MutableEventInfo(0, 0, 0));
+    // Use the same event identity as the CSV writer, independently of output order.
+    const auto eventNumber = event.GetEventNumber();
+    if (eventNumber > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+        throw JException("Event number exceeds the EventInfo integer range");
+    }
+    auto eventInfo = info.create();
+    eventInfo.setEventNumber(static_cast<int>(eventNumber));
+    eventInfo.setRunNumber(event.GetRunNumber());
+    eventInfo.setTimesliceNumber(0);  // No timeslice information in this input format.
     event.InsertCollection<EventInfo>(            std::move(info),        "EventInfo");
     event.InsertCollection<DigitizedMtpcMcTrack>( std::move(podioTracks), "DigitizedMtpcMcTracks");
     event.InsertCollection<DigitizedMtpcMcHit>(   std::move(podioHits),   "DigitizedMtpcMcHits");

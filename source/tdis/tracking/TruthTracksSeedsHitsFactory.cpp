@@ -107,7 +107,7 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
         static_cast<float>(z_variance)      // was: 1*ActsUnits::cm  (a length, not variance)
     };
 
-    const uint32_t cell_id = 1'000'000 * plane + 1'000 * ring + pad;
+    const uint32_t cell_id = 1'000'000 * mcHit.getPlane() + 1'000 * ring + pad;
 
     // -----------------------------------------------------------------------
     // TrackerHit
@@ -115,8 +115,9 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     auto hit = m_out_trackerHits()->create();
     hit.setPosition(position);
     hit.setPositionError(cov);
-    hit.setTime(cell_id);
-    hit.setTimeError(1.0F * static_cast<float>(ActsUnits::ms));
+    hit.setCellID(cell_id);
+    hit.setTime(static_cast<float>(mcHit.getTime()));  // EDM time is in ns.
+    hit.setTimeError(static_cast<float>(ActsUnits::ms / ActsUnits::ns));
     hit.setEdep(mcHit.getAdc());
     hit.setEdepError(0.0F);
     hit.setRawHit(mcHit);
@@ -262,14 +263,14 @@ tdis::TrackSeed TruthTracksSeedsHitsFactory::createTrackSeedWithParameters(
     track_param.setQOverP(charge / smearedMomentum);
     track_param.setTime(mc_track.getHits().at(0).getTime());
 
-    // Covariance (diagonal; entries are already variances in natural ACTS units)
+    // EDM covariance in [mm, mm, rad, rad, e/GeV, ns]; convert time at the ACTS boundary.
     tdis::Cov6f cov;
     cov(0, 0) = m_cfg_covLoc0()   * ActsUnits::mm * ActsUnits::mm;          // loc0  [mm²]
     cov(1, 1) = m_cfg_covLoc1()   * ActsUnits::mm * ActsUnits::mm;          // loc1  [mm²]
     cov(2, 2) = m_cfg_covPhi();                                              // phi   [rad²]
     cov(3, 3) = m_cfg_covTheta();                                            // theta [rad²]
     cov(4, 4) = m_cfg_covQOverP() / (ActsUnits::GeV * ActsUnits::GeV);      // q/p   [(e/GeV)²]
-    cov(5, 5) = m_cfg_covTime()   * ActsUnits::ns  * ActsUnits::ns;         // time  [ns²]
+    cov(5, 5) = m_cfg_covTime();                                           // time [ns²]
     track_param.setCovariance(cov);
 
     // -----------------------------------------------------------------------

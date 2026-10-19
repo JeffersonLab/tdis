@@ -61,8 +61,8 @@ private:
             "evt,"              // 0 - event number/index
             "seed_id,"          // 1 - seed/track index
             "mc_mom,"           // 2 - MC total momentum
-            "mc_phi,"           // 3 - MC phi angle at start
-            "mc_theta,"         // 4 - MC theta angle at start
+            "mc_phi,"           // 3 - MC phi angle at start [rad]
+            "mc_theta,"         // 4 - MC theta angle at start [rad]
             "mc_vtx_z,"         // 5 - MC exact Z vertex
             "mc_hits_count,"    // 6 - MC hits count
             "pdg,"              // 7 - init truth particle PDG

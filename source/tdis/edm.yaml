@@ -5,7 +5,8 @@
 #  - https://github.com/eic/EDM4eic/blob/main/edm4eic.yaml
 
 # Schema version is of 100*major + minor. Major has to be changed every time the schema changes
-schema_version: 1
+# Version 100 stores times in ns; all MC, seed, and fitted angles are radians.
+schema_version: 100
 
 options :
   # should getters / setters be prefixed with get / set?
@@ -272,9 +273,9 @@ datatypes :
     Author: "Dmitry Romanov"
     Members:
       - double momentum    // (GeV/c)
-      - double theta       // (degrees)
-      - double phi         // (degrees)
-      - double vertexZ     // (m)
+      - double theta       // [rad] Converted from input-file degrees
+      - double phi         // [rad] Converted from input-file degrees
+      - double vertexZ     // [mm]
     OneToManyRelations:
       - tdis::DigitizedMtpcMcHit hits // hits contained in the cluster
   
@@ -288,10 +289,10 @@ datatypes :
       - int ring                          // - Ring (id of rin, 0 is inner most).
       - int pad                           // - Pad (id of pad, 0 is at or closest to phi=0 and numbering is clockwise).
       - int plane                         // - Plane (id of z plane from 0 upstream  to 9 downstream)
-      - double zToGem                     // - (m) ZtoGEM
-      - double padCenterX                 // - (m) X coordinate of pad center
-      - double padCenterY                 // - (m) Y coordinate of pad center
-      - tdis::Vector3f  truePosition      // - True hit x,y,z info (quiet_NaN() if not provided)
+      - double zToGem                     // [mm] ZtoGEM
+      - double padCenterX                 // [mm] X coordinate of pad center
+      - double padCenterY                 // [mm] Y coordinate of pad center
+      - tdis::Vector3f  truePosition      // [mm] True hit x,y,z (quiet_NaN() if not provided)
 
   tdis::TrackerHit:
     Description: "Tracker hit (reconstructed from Raw)"
@@ -301,7 +302,7 @@ datatypes :
       - tdis::Vector3f     position          // Hit (cell) position [mm]
       - tdis::CovDiag3f    positionError     // Covariance Matrix
       - float              time              // Hit time [ns]
-      - float              timeError         // Error on the time
+      - float              timeError         // Time standard deviation [ns]
       - float              edep              // Energy deposit in this hit [GeV]
       - float              edepError         // Error on the energy deposit [GeV]
     OneToOneRelations:
@@ -312,9 +313,9 @@ datatypes :
     Author: "W. Deconinck"
     Members:
       - uint64_t          surface           // Surface for bound coordinates (geometryID)
-      - tdis::Vector2f    loc               // 2D location on surface
-      - float             time              // Measurement time
-      - tdis::Cov3f       covariance        // Covariance on location and time
+      - tdis::Vector2f    loc               // 2D location on surface [mm]
+      - float             time              // Measurement time [ns]
+      - tdis::Cov3f       covariance        // Covariance in [loc0,loc1,time], units [mm,mm,ns]
     VectorMembers:
       - float             weights           // Weight for each of the hits, mirrors hits array
     OneToManyRelations:
@@ -324,7 +325,7 @@ datatypes :
     Description: "Seed info from the realistic seed finder"
     Author: "S. Li, B. Schmookler, J. Osborn"
     Members:
-      - tdis::Vector3f         perigee         // Vector for the perigee (line surface)
+      - tdis::Vector3f         perigee         // Vector for the perigee (line surface) [mm]
     OneToManyRelations:
       - tdis::TrackerHit       hits            // Tracker hits triplet for seeding
       - tdis::Measurement2D    measurements    // Tracker measurements associated with hits
@@ -358,13 +359,13 @@ datatypes :
     Members:
       - int32_t              type              // Type of track parameters (-1/seed, 0/head, ...)
       - uint64_t             surface           // Surface for bound parameters (geometryID)
-      - tdis::Vector2f    loc               // 2D location on surface
+      - tdis::Vector2f    loc               // 2D location on surface [mm]
       - float                theta             // Track polar angle [rad]
       - float                phi               // Track azimuthal angle [rad]
       - float                qOverP            // [e/GeV]
       - float                time              // Track time [ns]
       - int32_t              pdg               // pdg pid for these parameters
-      - tdis::Cov6f          covariance        // Full covariance in basis [l0,l1,theta,phi,q/p,t]
+      - tdis::Cov6f          covariance        // Full covariance in [loc0,loc1,phi,theta,q/p,time], units [mm,mm,rad,rad,e/GeV,ns]
 
 
   tdis::Track:
@@ -372,11 +373,11 @@ datatypes :
     Author: "S. Joosten, J. Osborn"
     Members:
       - int32_t            type                           // Flag that defines the type of track
-      - tdis::Vector3f  position                          // Track 3-position at the vertex
+      - tdis::Vector3f  position                          // Track 3-position at the vertex [mm]
       - tdis::Vector3f  momentum                          // Track 3-momentum at the vertex [GeV]
       - tdis::Cov6f     positionMomentumCovariance        // Covariance matrix in basis [x,y,z,px,py,pz]
       - float              time                           // Track time at the vertex [ns]
-      - float              timeError                      // Error on the track vertex time
+      - float              timeError                      // Track time standard deviation [ns]
       - float              charge                         // Particle charge
       - float              chi2                           // Total chi2
       - uint32_t           ndf                            // Number of degrees of freedom

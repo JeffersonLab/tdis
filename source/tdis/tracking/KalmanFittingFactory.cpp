@@ -240,6 +240,11 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     actsCov(Acts::eBoundTime,   Acts::eBoundTheta)  = C(5,3);  // time-theta (symmetric)
     actsCov(Acts::eBoundTime,   Acts::eBoundQOverP) = C(5,4);  // time-q/p   (symmetric)
     actsCov(Acts::eBoundTime,   Acts::eBoundTime)   = C(5,5);  // time-time
+
+    // EDM time is ns; ACTS time is c*t. Scale each covariance index separately,
+    // including correlations (the time variance receives two factors of ns).
+    actsCov.row(Acts::eBoundTime) *= Acts::UnitConstants::ns;
+    actsCov.col(Acts::eBoundTime) *= Acts::UnitConstants::ns;
     // =========================================================================
 
     // -------------------------------------------------------------------------
@@ -290,7 +295,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
             firstMcHit.getPadCenterX(),
             firstMcHit.getPadCenterY(),
             firstMcHit.getTruePosition().z,
-            firstMcHit.getTime()
+            firstMcHit.getTime() * Acts::UnitConstants::ns
         },
         dir3,
         podioInitParams.getQOverP(),
@@ -305,10 +310,10 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     }
 
     m_log->debug(
-        "Initial track parameters: p = {:.3f} GeV, theta = {:.3f} deg, phi = {:.3f} deg, vz = {:.3f} mm",
+        "Initial track parameters: p = {:.3f} GeV, theta = {:.3f} rad, phi = {:.3f} rad, vz = {:.3f} mm",
         1 / podioInitParams.getQOverP() / Acts::UnitConstants::GeV,
-        podioInitParams.getTheta() / Acts::UnitConstants::degree,
-        podioInitParams.getPhi() / Acts::UnitConstants::degree,
+        podioInitParams.getTheta(),
+        podioInitParams.getPhi(),
         podioPerigee.z);
 
     ActsExamples::PassThroughCalibrator calibrator;
@@ -478,8 +483,8 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
 
     m_log->debug("trackProxy.tipIndex() = {}", trackProxy.tipIndex());
     m_log->debug("mcTrack.mom = {} reco mom = {}", mcTrack.getMomentum(), trackProxy.absoluteMomentum());
-    m_log->debug("mcTrack.theta = {} reco = {}", mcTrack.getTheta(), trackProxy.theta());
-    m_log->debug("mcTrack.phi  = {} reco phi {}", mcTrack.getPhi(), trackProxy.phi());
+    m_log->debug("mcTrack.theta [rad] = {} reco [rad] = {}", mcTrack.getTheta(), trackProxy.theta());
+    m_log->debug("mcTrack.phi [rad] = {} reco [rad] = {}", mcTrack.getPhi(), trackProxy.phi());
     m_log->debug("reco chi2 {} nDoF {} chi2/ndof {}",
                  trackProxy.chi2(), trackProxy.nDoF(),
                  trackProxy.chi2() / trackProxy.nDoF());
@@ -554,14 +559,14 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     trackParams.setTheta(static_cast<float>(boundParams[Acts::eBoundTheta]));
     trackParams.setPhi(static_cast<float>(boundParams[Acts::eBoundPhi]));
     trackParams.setQOverP(static_cast<float>(boundParams[Acts::eBoundQOverP]));
-    trackParams.setTime(static_cast<float>(boundParams[Acts::eBoundTime]));
+    trackParams.setTime(static_cast<float>(boundParams[Acts::eBoundTime] / Acts::UnitConstants::ns));
     trackParams.setPdg(static_cast<int32_t>(trackProxy.particleHypothesis().absolutePdg()));
 
     // =========================================================================
     // Full 6x6 output covariance with unit conversion (ACTS internal → EDM)
     //
-    // ACTS internal units:  length in mm, angles in rad, q/p in 1/GeV, time in ns
-    // EDM units:            same conventions; scale factors applied per-element
+    // ACTS internal units:  length in mm, angles in rad, q/p in 1/GeV, time in c*t
+    // EDM units:            mm, rad, 1/GeV, ns; scale factors applied per-element
     //
     // Conversion factors per parameter:
     //   loc0, loc1  : divide by mm  (UnitConstants::mm)
@@ -731,9 +736,10 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
 
         track.setPositionMomentumCovariance(pmCov);
     }
-    track.setTime(static_cast<float>(boundParams[Acts::eBoundTime]));
+    track.setTime(static_cast<float>(boundParams[Acts::eBoundTime] / Acts::UnitConstants::ns));
     track.setTimeError(
-        std::sqrt(static_cast<float>(boundCov(Acts::eBoundTime, Acts::eBoundTime))));
+        static_cast<float>(std::sqrt(boundCov(Acts::eBoundTime, Acts::eBoundTime)) /
+                           Acts::UnitConstants::ns));
     track.setCharge(std::copysign(1.0, qOverP));
     track.setChi2(trajectorySummary.chi2Sum);
     track.setNdf(trajectorySummary.NDF);
@@ -764,10 +770,10 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         });
 
     m_log->debug(
-        "Track successfully converted: p={:.3f} GeV, theta={:.3f} deg, phi={:.3f} deg, chi2/ndf={:.2f}",
+        "Track successfully converted: p={:.3f} GeV, theta={:.3f} rad, phi={:.3f} rad, chi2/ndf={:.2f}",
         momentum,
-        theta / Acts::UnitConstants::degree,
-        phi   / Acts::UnitConstants::degree,
+        theta,
+        phi,
         track.getChi2() / track.getNdf());
 }
 
