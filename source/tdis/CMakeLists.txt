@@ -156,6 +156,12 @@ target_link_libraries(tdis
 )
 
 set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+# Find the installed data model libraries alongside this installation on Linux.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set_property(TARGET tdis APPEND PROPERTY INSTALL_RPATH "$ORIGIN/../lib")
+    set_property(TARGET podio_model_lib podio_model_dict APPEND PROPERTY INSTALL_RPATH "$ORIGIN")
+    set_target_properties(podio_model_lib podio_model_dict PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
 target_include_directories(tdis PRIVATE "podio_model")
 target_include_directories(tdis SYSTEM PUBLIC ${JANA_INCLUDE_DIR} ${ROOT_INCLUDE_DIRS})
 target_include_directories(tdis PUBLIC ${CMAKE_CURRENT_LIST_DIR} "${CMAKE_CURRENT_LIST_DIR}/..")

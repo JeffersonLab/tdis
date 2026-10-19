@@ -101,6 +101,40 @@ cmake -DWITH_TESTS=ON ..
 
 ## Troubleshooting
 
+### Installed executable cannot find the data model libraries
+
+If `tdis` reports `libpodio_model_dict.so` or `libpodio_model_lib.so` is missing
+after installing to `/usr/local`, run this inside the container's Bash shell:
+
+```bash
+export LD_LIBRARY_PATH="/usr/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+tdis --help
+```
+
+This is a workaround for older builds whose installed runtime search path
+omits the project's own libraries. The Linux CMake configuration now includes
+`$ORIGIN/../lib` for the executable and `$ORIGIN` for the data model libraries,
+so rebuilding and reinstalling removes the need for that workaround.
+See the [CMake INSTALL_RPATH documentation](https://cmake.org/cmake/help/latest/prop_tgt/INSTALL_RPATH.html).
+
+For a persistent installation using the host mount
+`-v /work/halla/tdis/shujie:/worksim`, run inside the container:
+
+```bash
+cd /worksim/tdis
+cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/worksim/tdis/build/install
+cmake --build build -j2
+cmake --install build
+export PATH="/worksim/tdis/build/install/bin:$PATH"
+tdis --help
+```
+
+The build and installation remain in the mounted directory when a container
+started with `--rm` exits; installations under `/usr/local` do not. In a new
+container using the same mount, repeat the `export PATH` command or invoke
+`/worksim/tdis/build/install/bin/tdis` directly. Run this executable inside the
+dependency image, where ROOT, JANA, Acts, and podio are available.
+
 ### Acts Installation Path
 The build system automatically detects Acts installation. If Acts is installed in a non-standard location, ensure that:
 - `Acts_DIR` or `CMAKE_PREFIX_PATH` includes the Acts installation directory
