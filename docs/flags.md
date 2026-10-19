@@ -55,6 +55,34 @@ ACTS (A Common Tracking Software) geometry and conversion flags.
 - `pkalmanfittergenerator:acts_level` - *(empty)* - **Warning: Unused parameter**
 - `tracking:kf:log_level` - *info* - log_level for tracking:kf: trace, debug, info, warn, error, critical, off
 
+Repeated pad hits remain separate candidate measurements, including different
+input times. At each cylinder, the fitter chooses one candidate using the
+predicted local position and covariance:
+
+```text
+u = Rφ, v = z
+residual = candidate(u,v) − predicted(u,v)
+S = predicted local covariance + measurement covariance
+χ² = residualᵀ S⁻¹ residual
+```
+
+The smallest finite χ² wins; exact ties keep input order. This is a greedy
+single-track choice, without branching or an additional χ² rejection threshold.
+The Rφ residual is periodic. The chosen measurement ID is retained in fitted
+track relations and reused during backward filtering. Unchosen candidates remain
+in `Measurements2D`; they are not classified as fitted outliers.
+
+This is a 2D position fit: input time is retained but is not an independent
+selection coordinate. Different drift times can be distinguished through their
+supplied z positions; identical local positions and covariances are tied.
+TDIS does not convert TDC to z itself. Seeds are propagated from their perigee to
+the innermost candidate cylinder, with covariance transport, before tracking.
+This assumes the current near-axis, outward-going seed model; it is not a
+multi-turn track finder.
+
+The candidate-selection regression test can be run after building with
+`ctest --test-dir build -R layer_candidates --output-on-failure`.
+
 ### Truth Track Parameter Generator Flags
 
 - `TruthTrackParameterGenerator:acts:seed:cov:loc0` - *1* - [mm^2] Variance for local position 0 (impact parameter)

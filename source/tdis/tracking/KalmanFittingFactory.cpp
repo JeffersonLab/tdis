@@ -12,6 +12,9 @@
 #include "Acts/TrackFitting/GainMatrixSmoother.hpp"
 #include "Acts/TrackFitting/GainMatrixUpdater.hpp"
 #include "RefittingCalibrator.h"
+#include "LayerCandidateCalibrator.h"
+
+#include <set>
 #include "geometry/TdisGeometryHelper.hpp"
 #include "podio_model/DigitizedMtpcMcTrack.h"
 #include "podio_model/DigitizedMtpcMcTrackCollection.h"
@@ -72,6 +75,7 @@ void KalmanFittingFactory::fillMeasurements(
 
     auto podioPerigee = trackSeed.getPerigee();
 
+    std::set<Acts::GeometryIdentifier> linkedSurfaces;
     for (auto measurement : trackSeed.getMeasurements()) {
         // There always should be at least 1 reconstructed hit attached to measurement
         auto reconstructedHit = measurement.getHits().at(0);
@@ -99,8 +103,13 @@ void KalmanFittingFactory::fillMeasurements(
         }
         auto surfaceGeoId = surfaceFromTrkGeo->geometryId();
 
-        ActsExamples::IndexSourceLink sourceLink(surfaceGeoId, measurement.getObjectID().index);
-        sourceLinks.emplace_back(sourceLink);
+        // Indices refer to this seed's ACTS measurement container, not global EDM IDs.
+        ActsExamples::IndexSourceLink sourceLink(surfaceGeoId, actsMeasurements->size());
+        // KalmanFitter takes one link per surface. The calibrator evaluates all
+        // candidates on that surface and replaces this representative link.
+        if (linkedSurfaces.insert(surfaceGeoId).second) {
+            sourceLinks.emplace_back(sourceLink);
+        }
 
         // 1) Prepare the data vector (size=2)
         Acts::Vector2 loc2D = Acts::Vector2::Zero();
@@ -141,40 +150,24 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     // Create initial parameters at perigee
     auto podioPerigee = trackSeed.getPerigee();
     auto perigee = Acts::Surface::makeShared<Acts::PerigeeSurface>(
-        Acts::Vector3(podioPerigee.x, podioPerigee.y, podioPerigee.z));
+        Acts::Vector3::Zero());
 
     auto podioInitParams = trackSeed.getInitParams();
 
-    const auto& firstMeas = trackSeed.getMeasurements().at(0);
-
-    auto firstMcHit  = trackSeed.getMcTrack().getHits().at(0);
-    auto secondMcHit = trackSeed.getMcTrack().getHits().at(1);
-
-    if (!firstMcHit.isAvailable() || !secondMcHit.isAvailable()) {
-        m_log->warn("!firstMcHit.isAvailable() || !secondMcHit.isAvailable() - skipping track");
-        return;
+    // Seeds originate near the beam axis. Start navigation at the innermost
+    // candidate cylinder, independently of input time ordering or repeated pads.
+    const Acts::Surface* startSurf = nullptr;
+    double firstRadius = std::numeric_limits<double>::infinity();
+    for (const auto& measurement : trackSeed.getMeasurements()) {
+        const auto* surface = m_acts_geo_svc->GetTrackingGeometry()->findSurface(
+            Acts::GeometryIdentifier(measurement.getSurface()));
+        const auto& bounds = dynamic_cast<const Acts::CylinderBounds&>(surface->bounds());
+        const double radius = bounds.get(Acts::CylinderBounds::eR);
+        if (radius < firstRadius) {
+            firstRadius = radius;
+            startSurf = surface;
+        }
     }
-
-    using SurfacePtr = std::shared_ptr<const Acts::Surface>;
-    SurfacePtr startSurf =
-        m_acts_geo_svc->GetDetectorCylinder(firstMcHit.getRing())->surface().getSharedPtr();
-
-    if (!startSurf) {
-        m_log->critical("startSurf is null for surface id {}", firstMeas.getSurface());
-        return;
-    }
-
-    // TODO: direction currently computed from true MC hit positions (development/validation only).
-    //       Replace with a reconstructed-hit direction estimate for production use.
-    Eigen::Vector3d dir3{
-        double(secondMcHit.getTruePosition().x - firstMcHit.getTruePosition().x),
-        double(secondMcHit.getTruePosition().y - firstMcHit.getTruePosition().y),
-        double(secondMcHit.getTruePosition().z - firstMcHit.getTruePosition().z)};
-    if (dir3.norm() == 0.) {
-        m_log->warn("Two identical MC hit positions; cannot define direction.");
-        return;
-    }
-    dir3.normalize();
 
     // =========================================================================
     // Full 6x6 covariance mapping: PODIO → ACTS
@@ -287,25 +280,28 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         "PODIO Cov6f raw diagonal — C(0,0)={:.3e}  C(1,1)={:.3e}  C(2,2)={:.3e}  C(3,3)={:.3e}  C(4,4)={:.3e}  C(5,5)={:.3e}",
         C(0,0), C(1,1), C(2,2), C(3,3), C(4,4), C(5,5));
 
-    // FIX: typo corrected: getPadHight -> getPadHeight
-    auto alternateInitParams = Acts::BoundTrackParameters::create(
-        geoContext,
-        startSurf,
-        {
-            firstMcHit.getPadCenterX(),
-            firstMcHit.getPadCenterY(),
-            firstMcHit.getTruePosition().z,
-            firstMcHit.getTime() * Acts::UnitConstants::ns
-        },
-        dir3,
-        podioInitParams.getQOverP(),
-        actsCov,
-        Acts::ParticleHypothesis::proton(),
-        2 * getPadHight());
+    Acts::BoundVector seedParameters;
+    seedParameters << podioInitParams.getLoc().a, podioInitParams.getLoc().b,
+        podioInitParams.getPhi(), podioInitParams.getTheta(),
+        podioInitParams.getQOverP(), podioInitParams.getTime() * Acts::UnitConstants::ns;
+    if (!seedParameters.allFinite() || !actsCov.allFinite()) {
+        m_log->warn("Non-finite seed parameters or covariance; skipping track {}", trackSeed.id().index);
+        return;
+    }
+    const Acts::BoundTrackParameters initialParameters(
+        perigee, seedParameters, actsCov, Acts::ParticleHypothesis::proton());
 
-    if (!alternateInitParams.ok()) {
-        m_log->warn("!alternateInitParams.ok()");
-        m_log->warn(alternateInitParams.error().message());
+    // The central region is outside the tracking volume. Propagate explicitly
+    // to the first cylinder without geometry navigation, including covariance
+    // transport; then let the normal navigator visit the detector layers.
+    using SeedPropagator = Acts::Propagator<Stepper>;
+    auto seedField = std::make_shared<Acts::ConstantBField>(
+        Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
+    SeedPropagator seedPropagator{Stepper(seedField)};
+    SeedPropagator::Options<> seedOptions(geoContext, magContext);
+    auto propagatedSeed = seedPropagator.propagate(initialParameters, *startSurf, seedOptions);
+    if (!propagatedSeed.ok() || !propagatedSeed.value().endParameters.has_value()) {
+        m_log->warn("Cannot propagate seed {} to the innermost candidate cylinder", trackSeed.id().index);
         return;
     }
 
@@ -316,8 +312,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         podioInitParams.getPhi(),
         podioPerigee.z);
 
-    ActsExamples::PassThroughCalibrator calibrator;
-    ActsExamples::MeasurementCalibratorAdapter calibratorAdaptor(calibrator, *actsMeasurements);
+    LayerCandidateCalibrator calibrator(*actsMeasurements);
 
     Acts::GainMatrixUpdater        kfUpdater;
     Acts::GainMatrixSmoother       kfSmoother;
@@ -339,24 +334,9 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     extensions.reverseFilteringLogic.connect<
         &SimpleReverseFilteringLogic::doBackwardFiltering>(&reverseFilteringLogic);
 
-    // -------------------------------------------------------------------------
-    // Reference surface fix.
-    //
-    // Root cause of "trackProxy has no reference surface":
-    //   Passing nullptr + strategy::last means ACTS needs a smoothed state on
-    //   the last surface to assign the reference. Because backward smoothing is
-    //   disabled (momentumThreshold=0), no smoothed state exists on the last
-    //   surface → hasReferenceSurface() stays false → parameters() is garbage.
-    //
-    // Fix: pass startSurf (the first hit surface) explicitly as the reference.
-    //   - It is guaranteed to exist — the fit already visited it.
-    //   - strategy::first is used so ACTS extrapolates back to startSurf and
-    //     assigns parameters there, which is the natural perigee-like point for
-    //     a barrel TPC track entering from the innermost ring outward.
-    //   - This gives well-defined, physically meaningful parameters at the
-    //     first measurement surface regardless of whether smoothing ran.
-    // -------------------------------------------------------------------------
-    const Acts::Surface* referenceSurface = startSurf.get();
+    // Export the fit at an accepted measurement surface. ACTS propagates the
+    // perigee seed and its covariance to the cylinders before candidate selection.
+    const Acts::Surface* referenceSurface = startSurf;
 
     bool doRefit = false;
 
@@ -370,7 +350,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     kfOptions.energyLoss               = energyLoss;
     kfOptions.freeToBoundCorrection    = freeToBoundCorrection;
     kfOptions.extensions.calibrator.connect<
-        &ActsExamples::MeasurementCalibratorAdapter::calibrate>(&calibratorAdaptor);
+        &LayerCandidateCalibrator::calibrate>(&calibrator);
 
     if (doRefit) {
         kfOptions.extensions.surfaceAccessor.connect<
@@ -412,7 +392,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     auto result = trackFitter.fit(
         sourceLinks.begin(),
         sourceLinks.end(),
-        alternateInitParams.value(),
+        *propagatedSeed.value().endParameters,
         kfOptions,
         tracks);
 
@@ -420,6 +400,13 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         m_log->error("Fit failed for trackSeed {}: {}",
                      trackSeed.id().index, result.error().message());
         return;
+    }
+
+    m_log->info("Track seed {}: evaluated {} candidate measurements on {} selected cylinders",
+                trackSeed.id().index, actsMeasurements->size(), calibrator.selectedCandidates().size());
+    for (const auto& [surface, index] : calibrator.selectedCandidates()) {
+        m_log->debug("Selected surface {} candidate {} (EDM measurement {})",
+                     surface.value(), index, trackSeed.getMeasurements()[index].getObjectID().index);
     }
 
     auto& trackProxy = result.value();

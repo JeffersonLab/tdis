@@ -156,6 +156,13 @@ target_link_libraries(tdis
 )
 
 set_target_properties(tdis PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+if(BUILD_TESTING)
+    add_executable(test_layer_candidates ../tests/test_layer_candidates.cpp)
+    target_include_directories(test_layer_candidates PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${Acts_HOME_INCLUDE}")
+    target_link_libraries(test_layer_candidates PRIVATE ActsCore ${ActsExamples_LIB})
+    add_test(NAME layer_candidates COMMAND test_layer_candidates)
+endif()
+
 # Find the installed data model libraries alongside this installation on Linux.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set_property(TARGET tdis APPEND PROPERTY INSTALL_RPATH "$ORIGIN/../lib")

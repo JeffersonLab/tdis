@@ -23,4 +23,5 @@ cmake_policy(SET CMP0144 NEW)
 
 #include(cmake/jana_plugin.cmake)
 
+include(CTest)
 add_subdirectory(source/tdis)
