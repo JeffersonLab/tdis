@@ -6,7 +6,8 @@
 
 # Schema version is of 100*major + minor. Major has to be changed every time the schema changes
 # Version 100 stores times in ns; all MC, seed, and fitted angles are radians.
-schema_version: 100
+# Version 101 stores TrackerHit positionError in local cylinder coordinates; layout unchanged.
+schema_version: 101
 
 options :
   # should getters / setters be prefixed with get / set?
@@ -299,8 +300,8 @@ datatypes :
     Author: "W. Armstrong, S. Joosten"
     Members:
       - uint64_t           cellID            // The detector specific (geometrical) cell id.
-      - tdis::Vector3f     position          // Hit (cell) position [mm]
-      - tdis::CovDiag3f    positionError     // Covariance Matrix
+      - tdis::Vector3f     position          // Global hit (cell) position [mm]
+      - tdis::CovDiag3f    positionError     // [mm^2] Local cylinder variances xx=Var(R*phi), yy=Var(z), zz=0 (unused); not global XYZ covariance
       - float              time              // Hit time [ns]
       - float              timeError         // Time standard deviation [ns]
       - float              edep              // Energy deposit in this hit [GeV]

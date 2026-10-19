@@ -43,11 +43,17 @@ namespace tdis::tracking {
         // -----------------------------------------------------------------------
 
         /// When true, use the MC true hit position instead of the digitized
-        /// pad-centre position. Falls back automatically when true_x is NaN.
+        /// pad-centre position. Falls back when any true coordinate is non-finite.
         Parameter<bool> m_cfg_useTrueHitPos{this,
             "acts:use_true_hit_position",
             true,
             "Use true hits xyz instead of digitized one"
+        };
+
+        Parameter<double> m_cfg_hitZVariance{this,
+            "acts:hit:cov:z",
+            100.0 / 12.0,
+            "[mm^2] Local z variance; placeholder (10 mm)^2/12, not a calibrated drift resolution"
         };
 
         /// Fractional (dimensionless) 1-sigma Gaussian smear applied to the
@@ -136,11 +142,10 @@ namespace tdis::tracking {
          * Position is taken from the true hit XYZ when m_cfg_useTrueHitPos is set
          * and the true coordinates are finite; otherwise the digitised pad-centre
          * is used.  The hit is skipped (nullopt returned for both outputs) when
-         * the pad index is sentinel ±999 or when the globalToLocal projection
-         * fails.
+         * the plane ID is invalid, the pad index is sentinel ±999, the fallback
+         * zToGem is non-finite, or the globalToLocal projection fails.
          *
          * @param mcHit          Source MC hit.
-         * @param plane          Plane index within the event.
          * @param event_index    Event counter (for log messages).
          * @param plane_positions  Vector of nominal Z positions for each plane [mm].
          * @return {TrackerHit, Measurement2D} — either both valid or both nullopt.
@@ -148,7 +153,6 @@ namespace tdis::tracking {
         std::pair<std::optional<tdis::TrackerHit>, std::optional<tdis::Measurement2D>>
         createHitAndMeasurement(
             const tdis::DigitizedMtpcMcHit& mcHit,
-            int                             plane,
             uint64_t                        event_index,
             const std::vector<double>&      plane_positions);
 

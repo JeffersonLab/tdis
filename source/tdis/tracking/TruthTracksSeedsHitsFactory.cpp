@@ -1,5 +1,8 @@
 #include "TruthTracksSeedsHitsFactory.h"
 
+#include <cmath>
+#include <stdexcept>
+
 #include <podio_model/DigitizedMtpcMcTrack.h>
 #include <podio_model/DigitizedMtpcMcTrackCollection.h>
 
@@ -36,6 +39,10 @@ void TruthTracksSeedsHitsFactory::Configure() {
     m_service_geometry();
     m_log = m_service_log->logger("TruthTracksSeedsHitsFactory");
 
+    if (!std::isfinite(m_cfg_hitZVariance()) || m_cfg_hitZVariance() <= 0.0) {
+        throw std::invalid_argument("acts:hit:cov:z must be finite and positive [mm^2]");
+    }
+
     std::random_device rd;
     m_generator = std::mt19937(rd());
 }
@@ -54,7 +61,6 @@ double TruthTracksSeedsHitsFactory::generateNormal(double mean, double stddev) {
 std::pair<std::optional<tdis::TrackerHit>, std::optional<tdis::Measurement2D>>
 TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     const tdis::DigitizedMtpcMcHit& mcHit,
-    int                             plane,
     uint64_t                        event_index,
     const std::vector<double>&      plane_positions)
 {
@@ -62,7 +68,12 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
 
     const int    ring      = mcHit.getRing();
     const int    pad       = mcHit.getPad();
-    const double z_to_gem  = mcHit.getZToGem();
+    const int    plane     = mcHit.getPlane();
+
+    if (plane < 0 || static_cast<size_t>(plane) >= plane_positions.size()) {
+        m_log->warn("Event #{}: invalid readout plane {}, skipping hit", event_index, plane);
+        return {std::nullopt, std::nullopt};
+    }
 
     // Sentinel pad values indicate invalid / out-of-acceptance hits
     if (pad == -999 || pad == 999) {
@@ -73,38 +84,44 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     // -----------------------------------------------------------------------
     // Position selection
     // -----------------------------------------------------------------------
-    auto [padX, padY] = getPadCenter(ring, pad);
-    const double planeZ    = plane_positions[plane];
-    const double hitCalcZ  = planeZ + (plane % 2 ? -z_to_gem : z_to_gem);
-
     // Use true position only when configured AND the true coords are finite
+    const auto truePosition = mcHit.getTruePosition();
     const bool shouldUseTruePos =
-        m_cfg_useTrueHitPos() && !std::isnan(mcHit.getTruePosition().x);
+        m_cfg_useTrueHitPos() && std::isfinite(truePosition.x) &&
+        std::isfinite(truePosition.y) && std::isfinite(truePosition.z);
 
     Vector3f position;
     if (shouldUseTruePos) {
-        position = mcHit.getTruePosition();
+        position = truePosition;
     } else {
+        const double z_to_gem = mcHit.getZToGem();
+        if (!std::isfinite(z_to_gem)) {
+            m_log->warn("Event #{}: non-finite zToGem for plane {}, skipping hit", event_index, plane);
+            return {std::nullopt, std::nullopt};
+        }
+        auto [padX, padY] = getPadCenter(ring, pad);
+        const double planeZ = plane_positions.at(plane);
+        const double hitCalcZ = planeZ + (plane % 2 ? -z_to_gem : z_to_gem);
         position.x = static_cast<float>(padX);
         position.y = static_cast<float>(padY);
         position.z = static_cast<float>(hitCalcZ);
     }
 
     // -----------------------------------------------------------------------
-    // Covariance
-    // Transverse (XY): variance derived from the largest pad dimension.
-    // Longitudinal (Z): variance derived from the pad height along Z (same
-    //                   helper function ensures units are length², not length).
+    // Local cylinder covariance: u = R*phi, v = z, in mm².
+    // Position remains global XYZ. Assume independent u/v errors and uniform
+    // charge within the pad's azimuthal width. The z variance is a placeholder.
+    // The third slot is unused for this 2D measurement, not a radial constraint.
     // -----------------------------------------------------------------------
-    const double maxPadDim  = std::max(getPadApproxWidth(ring), getPadHight());
-    const double xy_variance = get_variance(maxPadDim);
-    // FIX Bug #4: z entry must be a variance (length²), not a bare length.
-    const double z_variance  = get_variance(1.0 * ActsUnits::cm);
+    const double padWidth = getPadApproxWidth(ring);
+    const double maxPadDim = std::max(padWidth, getPadHight());
+    const double u_variance = get_variance(padWidth);
+    const double z_variance = m_cfg_hitZVariance() * ActsUnits::mm * ActsUnits::mm;
 
     tdis::CovDiag3f cov{
-        static_cast<float>(xy_variance),
-        static_cast<float>(xy_variance),
-        static_cast<float>(z_variance)      // was: 1*ActsUnits::cm  (a length, not variance)
+        static_cast<float>(u_variance),
+        static_cast<float>(z_variance),
+        0.0F
     };
 
     const uint32_t cell_id = 1'000'000 * mcHit.getPlane() + 1'000 * ring + pad;
@@ -326,10 +343,9 @@ void TruthTracksSeedsHitsFactory::Execute(int32_t /*run_nr*/, uint64_t event_ind
         std::vector<tdis::TrackerHit>    trackHits;
         std::vector<tdis::Measurement2D> trackMeasurements;
 
-        int plane_idx = 0;
         for (const auto& mcHit : mc_track.getHits()) {
             auto [hit_opt, meas_opt] =
-                createHitAndMeasurement(mcHit, plane_idx++, event_index, planePositions);
+                createHitAndMeasurement(mcHit, event_index, planePositions);
 
             if (hit_opt.has_value() && meas_opt.has_value()) {
                 trackHits.push_back(hit_opt.value());

@@ -52,3 +52,16 @@ or deleted. The fitter still fails for the three validation events.
 
 - 2026-10-18 22:02 PDT — Committed the installation fix as `e917ea8` and prepared the event-ID, cell-ID, unit, schema, and summary changes as a separate commit at the user's request; both messages credit ChatGPT, and generated `tmp/` artifacts are excluded.
 - 2026-10-18 22:02 PDT — Checked the diffs and reused the completed build and three-event/375-hit validation; `../workplan.md` and `../go_tdis` remain outside the Git repository and are not included in its commits.
+
+## 2026-10-19: Local cylinder hit covariance
+
+- 2026-10-19 01:37 EDT — Updated `source/tdis/tracking/TruthTracksSeedsHitsFactory.{h,cpp}` and `source/tdis/edm.yaml` so global hit positions carry explicitly local (Rφ, z) variances, with an unused third slot, configurable z variance defaulting to 100/12 mm², and schema 101 identifying the semantics.
+- 2026-10-19 01:37 EDT — Corrected `source/tdis/geometry/TdisGeometryHelper.hpp` to use 21 radial rings for pad height, so azimuthal covariance and the truth-position tolerance use the actual pad dimensions.
+- 2026-10-19 01:37 EDT — Rebuilt/installed `build/install/bin/tdis` and validated default and overridden covariance values in ROOT using nine selected truth-position hits from `../EPC-4p7T-xyzHits-ChargeSharing/g4sbsout_EPCEvents_0.txt`; inputs, provenance, build/run logs, ROOT/CSV outputs and `validate.py` are retained in `tmp/local-covariance-BEBJKV/`, with passing checks in `validation-final.log`. Initial YAML parsing and parameter-prefix failures are also retained; corrected checks passed.
+- 2026-10-19 01:37 EDT — Updated only the 1A log block in `../workplan.md` with conventions, configuration, validation limits, and the still-unfixed plane-index bug; original data is unchanged, and reconstructed z / successful fitting are not validated.
+
+## 2026-10-19: Use input plane IDs for hit positions
+
+- 2026-10-19 02:03 EDT — Updated `source/tdis/tracking/TruthTracksSeedsHitsFactory.{h,cpp}` to obtain and validate each raw hit's plane ID, remove the hit-counter argument, and evaluate the plane lookup only for digitized positions; non-finite truth coordinates trigger fallback and non-finite fallback zToGem is rejected.
+- 2026-10-19 02:03 EDT — Rebuilt and installed `build/install/bin/tdis`; `tmp/plane-index-RXmVgx/input.txt` supplies 20 synthetic hits covering every plane, repeated IDs beyond ten hits, invalid IDs, and missing coordinates. `validate.py` checked ROOT outputs and logs for truth and digitized modes (18 and 17 accepted hits), with passing results in `validation.log`. Plane-position constants/units and successful fitting remain unvalidated.
+- 2026-10-19 02:03 EDT — Updated the 1A log block in `../workplan.md` and prepared the plane-index and pending local-covariance changes for the requested commit, credited to ChatGPT; generated artifacts remain untracked and original data is unchanged.

@@ -18,7 +18,7 @@ namespace tdis {
 
     inline double getPadHight() {
         /** gets pad height which is the distance between rings*/
-        return (max_radius - min_radius) / num_pads_per_ring;
+        return ring_width;
     }
 
     inline double getPadApproxWidth(const int ring) {
