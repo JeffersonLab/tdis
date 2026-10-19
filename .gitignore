@@ -1,5 +1,6 @@
 /build*
 /.vscode
+/log/summary.md
 /cpm_modules
 .DS_Store
 .idea/
