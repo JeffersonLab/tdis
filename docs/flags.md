@@ -47,8 +47,8 @@ ACTS (A Common Tracking Software) geometry and conversion flags.
 
 ### Kalman Fitter Flags
 
-- `KalmanFitterGenerator:acts_level` - *INFO* - ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)
-- `KalmanFitterGenerator:bz` - *1.5* - Magnetic field in Z (Tesla)
+- `KalmanFittingFactory:acts_level` - *INFO* - ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)
+- `KalmanFittingFactory:bz` - *4.7* - Signed magnetic field along Z, in Tesla. Example: `tdis -pKalmanFittingFactory:bz=4.7 input.txt`. The effective field is printed at startup.
 - `KalmanFitterGenerator:InputTags` - *TruthTrackSeeds* - Input collection names
 - `KalmanFitterGenerator:loglevel` - *info* - Component log level
 - `KalmanFitterGenerator:OutputTags` - *FittedTrajectories,FittedTrackParameters,FittedTracks* - Output collection names

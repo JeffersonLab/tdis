@@ -43,6 +43,9 @@ KalmanFittingFactory::KalmanFittingFactory() {
 
 
 void KalmanFittingFactory::Configure() {
+    if (!std::isfinite(m_cfg_bz())) {
+        throw std::invalid_argument("KalmanFittingFactory:bz must be finite [T]");
+    }
     // Setup magnetic field
     auto magneticField = std::make_shared<Acts::ConstantBField>(
         Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
@@ -58,6 +61,7 @@ void KalmanFittingFactory::Configure() {
 
     // Logging
     m_log = m_log_svc->logger("KalmanFittingFactory");
+    m_log->info("Using Bz = {} T", m_cfg_bz());
 
     // Acts logging
     auto actsLvlStr = m_acts_level();
