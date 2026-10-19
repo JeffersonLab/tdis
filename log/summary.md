@@ -65,3 +65,9 @@ or deleted. The fitter still fails for the three validation events.
 - 2026-10-19 02:03 EDT — Updated `source/tdis/tracking/TruthTracksSeedsHitsFactory.{h,cpp}` to obtain and validate each raw hit's plane ID, remove the hit-counter argument, and evaluate the plane lookup only for digitized positions; non-finite truth coordinates trigger fallback and non-finite fallback zToGem is rejected.
 - 2026-10-19 02:03 EDT — Rebuilt and installed `build/install/bin/tdis`; `tmp/plane-index-RXmVgx/input.txt` supplies 20 synthetic hits covering every plane, repeated IDs beyond ten hits, invalid IDs, and missing coordinates. `validate.py` checked ROOT outputs and logs for truth and digitized modes (18 and 17 accepted hits), with passing results in `validation.log`. Plane-position constants/units and successful fitting remain unvalidated.
 - 2026-10-19 02:03 EDT — Updated the 1A log block in `../workplan.md` and prepared the plane-index and pending local-covariance changes for the requested commit, credited to ChatGPT; generated artifacts remain untracked and original data is unchanged.
+
+## 2026-10-19: Explicit readout-plane length units
+
+- 2026-10-19 02:06 EDT — Following the user's confirmation that the plane coordinates are cm, updated `source/tdis/geometry/TdisGeometryHelper.hpp` with explicit `Acts::UnitConstants::cm` factors so `getPlanePositions()` returns mm for combination with zToGem.
+- 2026-10-19 02:06 EDT — Rebuilt/installed `build/install/bin/tdis` and reused the 20-hit synthetic input from `tmp/plane-index-RXmVgx/`; ROOT validation in truth and digitized modes passed for all ten converted plane positions and unchanged truth XYZ. New artifacts and passing results are in `tmp/plane-units-WUby7v/validation.log`; fitted-track accuracy is not validated.
+- 2026-10-19 02:06 EDT — Updated only the 1A log block in `../workplan.md` and prepared the requested focused commit with ChatGPT credit; original inputs and earlier outputs were preserved.

@@ -95,17 +95,18 @@ namespace tdis {
     }
 
     constexpr std::vector<double> getPlanePositions() {
+        // Readout-plane coordinates specified in cm; return ACTS lengths (mm).
         std::vector<double> positions;
-        positions.emplace_back(-24.9935);
-        positions.emplace_back(-15.0065);
-        positions.emplace_back(-14.9935);
-        positions.emplace_back( -5.0065);
-        positions.emplace_back( -4.9935);
-        positions.emplace_back(  4.9935);
-        positions.emplace_back(  5.0065);
-        positions.emplace_back( 14.9935);
-        positions.emplace_back( 15.0065);
-        positions.emplace_back( 24.9935);
+        positions.emplace_back(-24.9935 * Acts::UnitConstants::cm);
+        positions.emplace_back(-15.0065 * Acts::UnitConstants::cm);
+        positions.emplace_back(-14.9935 * Acts::UnitConstants::cm);
+        positions.emplace_back( -5.0065 * Acts::UnitConstants::cm);
+        positions.emplace_back( -4.9935 * Acts::UnitConstants::cm);
+        positions.emplace_back(  4.9935 * Acts::UnitConstants::cm);
+        positions.emplace_back(  5.0065 * Acts::UnitConstants::cm);
+        positions.emplace_back( 14.9935 * Acts::UnitConstants::cm);
+        positions.emplace_back( 15.0065 * Acts::UnitConstants::cm);
+        positions.emplace_back( 24.9935 * Acts::UnitConstants::cm);
         return positions;
     }
 
