@@ -116,8 +116,8 @@ namespace tdis::tracking {
         };
         Parameter<double> m_cfg_covQOverP{this,
             "acts:seed:cov:qoverp",
-            0.1,
-            "[(e/GeV)^2] Variance for charge over momentum"
+            -1.0,
+            "[(e/GeV)^2] q/p variance; -1 derives it from fractional momentum smearing"
         };
         Parameter<double> m_cfg_covTime{this,
             "acts:seed:cov:time",

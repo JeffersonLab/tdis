@@ -99,6 +99,7 @@ The active component prefix is `TruthTracksSeedsHitsFactory`:
 
 - `acts:track_init:random_seed`: 0 uses random_device; a positive integer gives a fixed sequence (the performance runner uses 42 and one thread).
 - `acts:track_init:momentum_smear`: fractional momentum uncertainty, default 0.1; 0 disables smearing.
+- `acts:seed:cov:qoverp`: default -1 derives variance as `(momentum_smear × q/p_seed)²`; a nonnegative value overrides it in (e/GeV)².
 
 The original generator flag list below is retained for reference; use the active
 component prefix above for current commands.
@@ -108,7 +109,7 @@ component prefix above for current commands.
 - `TruthTrackParameterGenerator:acts:seed:cov:loc0` - *1* - [mm^2] Variance for local position 0 (impact parameter)
 - `TruthTrackParameterGenerator:acts:seed:cov:loc1` - *1* - [mm^2] Variance for local position 1 (z position at perigee)
 - `TruthTrackParameterGenerator:acts:seed:cov:phi` - *0.050000000000000003* - [rad^2] Variance for phi angle
-- `TruthTrackParameterGenerator:acts:seed:cov:qoverp` - *0.10000000000000001* - [(e/GeV)^2] Variance for charge over momentum
+- `TruthTracksSeedsHitsFactory:acts:seed:cov:qoverp` - *-1* - Derived fractional-smear model; nonnegative values set an absolute variance [(e/GeV)^2]
 - `TruthTrackParameterGenerator:acts:seed:cov:theta` - *0.01* - [rad^2] Variance for theta angle
 - `TruthTrackParameterGenerator:acts:seed:cov:time` - *10000000000* - [ns^2] Variance for time
 - `TruthTrackParameterGenerator:acts:seed:max_hits` - *3* - Maximum number of hits to include in a seed (typically 3-5 for initial seeding)
