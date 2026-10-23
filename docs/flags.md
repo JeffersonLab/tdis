@@ -93,6 +93,18 @@ The candidate-selection regression test can be run after building with
 Perigee transport and Cartesian covariance tests run with
 `ctest --test-dir build -R fitted_output --output-on-failure`.
 
+### Hit resolution
+
+- `TruthTracksSeedsHitsFactory:acts:hit:cov:z`: default 0.25 mm², the local cylinder z variance. With drift velocity 5 cm / 1000 ns = 0.05 mm/ns and timing standard deviation 10 ns, σz = vdrift × σt = 0.5 mm. The same variance is stored in TrackerHit local covariance and Measurement2D. Override this variance directly for other resolutions.
+
+The 10 ns resolution is interpreted as one standard deviation, rather than a
+time-bin width. This models the timing contribution alone; diffusion, drift-speed
+calibration, time-zero uncertainty and charge-sharing correlations are separate
+effects. This covariance setting does not change the input z positions.
+TrackerHit timeError is 10 ns and Measurement2D time variance is 100 ns².
+The KF uses only the two spatial coordinates; drift time is not added as an
+independent third measurement of z.
+
 ### Active seed-study controls
 
 The active component prefix is `TruthTracksSeedsHitsFactory`:

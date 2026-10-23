@@ -1,10 +1,58 @@
 # Tracking accuracy: iterative 1,000-event investigation
 
-Updated 2026-10-23 15:59 UTC.
+Updated 2026-10-23 10:17 PDT.
 
 The requested dp/p < 40% target is met for both truth-XYZ and digitized reconstruction, including the full-sample standard deviation and RMSE. No residual or chi² rejection was added. Matched event rotations show no detectable algorithmic phi dependence at the tested precision.
 
 These remain truth-assisted fits with a 10% momentum seed. The correctly propagated seed uncertainty matters at high momentum, where the pad measurements alone constrain curvature weakly. These numbers are not independent detector-only momentum resolutions.
+
+## Drift-time hit resolution update — 2026-10-23
+
+The supplied drift velocity is 5 cm / 1000 ns = 0.05 mm/ns. Interpreting the
+10 ns time resolution as one standard deviation gives:
+
+```text
+sigma_z = abs(v_drift) × sigma_t = 0.05 mm/ns × 10 ns = 0.5 mm
+Var(z) = sigma_z² = 0.25 mm²
+Var(time) = (10 ns)² = 100 ns²
+```
+
+The default `TruthTracksSeedsHitsFactory:acts:hit:cov:z` is now 0.25 mm²,
+replacing the earlier 100/12 mm² placeholder. Both TrackerHit local z variance
+and Measurement2D z variance use it; hit timeError is now 10 ns and the stored
+measurement time variance is 100 ns². The KF uses only (Rφ, z), so drift time
+is not fitted as a separate independent measurement. Input positions are
+unchanged, including the truth-position mode. The existing variance override
+remains available.
+
+This is the timing contribution alone. Diffusion, drift-speed and time-zero
+calibration uncertainties, and charge-sharing correlations still need a model.
+The earlier investigation tables below use the old z placeholder and remain
+as the baseline for comparison.
+
+Validation uses the same file-0 inputs, fixed RNG 42, 10% seed momentum smearing and signed Bz = −4.7 T. Each mode processes 1,000 events with no added cuts.
+
+| Mode | Fits / valid perigees | dp/p bias [%] | dp/p sample SD [%] | Central 68% [%] | Gaussian core σ [%] |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Truth XYZ | 993 / 993 | 4.61 | 12.72 | 8.93 | 9.18 |
+| Digitized | 993 / 993 | 6.33 | 18.89 | 9.71 | 9.76 |
+
+| Mode | Residual | Bias | Sample SD | Central 68% half-width | Gaussian core σ |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Truth XYZ | Δtheta [mrad] | -0.7658 | 7.954 | 4.842 | 4.943 |
+| Truth XYZ | Δphi [mrad] | -5.866 | 27.4 | 13.78 | 13.74 |
+| Truth XYZ | DCAr [mm] | 0.1258 | 0.6024 | 0.3025 | 0.2479 |
+| Digitized | Δtheta [mrad] | -0.6858 | 7.877 | 5.074 | 5.039 |
+| Digitized | Δphi [mrad] | -0.8129 | 28.21 | 14.65 | 14.57 |
+| Digitized | DCAr [mm] | 0.2753 | 0.6605 | 0.4836 | 0.5097 |
+
+Efficiency remains 99.3% in both modes. The full dp/p SD remains below 40%, but grows from 9.88% → 12.72% (truth) and 10.83% → 18.89% (digitized). The central widths and Gaussian cores change much less: the narrower assigned hit error increases the influence of z and leads to larger fitted tails in these samples. A smaller assigned measurement error does not by itself establish a better fitted resolution; residual/model consistency, radial-bin projection and candidate/cluster correlations still need study. No covariance inflation or rejection cut was introduced to compensate.
+
+Momentum/theta-controlled phi-harmonic p-values are 0.385/0.278 for dp/p (truth/digitized); all four residual metrics have p > 0.19 in both modes. The earlier paired rotation results below belong to the original covariance study and were not rerun for this update.
+
+Rebuilt and installed the executable using the same image ID as the baseline; 3/3 CTests pass. Direct ROOT checks cover 114,023 truth-position hits and 114,051 digitized-position hits over 1,000 events per mode (including six empty hit collections each): every stored z variance is 0.25 mm², hit time error is 10 ns and measurement time variance is 100 ns². Hit positions, times, cell IDs, azimuthal variances and measurement local coordinates match the earlier files exactly.
+
+Generated checks are kept out of the active tree in `tmp/retained/2026-10-23/drift-resolution-171154/`, with `truth/`, `digitized/`, `build-installed.log` and `validation.log`. The two existing analysis scripts were sufficient; no new scripts were added. This section records the hit-resolution change and its validation.
 
 ## Plan and completed checks
 
@@ -29,7 +77,7 @@ These remain truth-assisted fits with a 10% momentum seed. The correctly propaga
 - Pad indices label angular centres: phi = (pad + 0.5 × odd_ring) × 2π/122. The extra half-pitch offset was incorrect for these inputs. Digitized mean delta-phi improves from +16.80 mrad to −2.79 mrad in the paired seed/covariance comparison.
 - The output track proxy now retains the proton hypothesis actually used for fitting; the ACTS vector container previously left the output labelled as a pion and used that hypothesis for the inward time extrapolation.
 
-## Final results
+## Baseline results before the drift-time resolution update
 
 Every row below processes 1,000 events. Sample SD uses N−1; RMSE includes bias. Percentages are absolute percentage points of (p_fit − p_truth)/p_truth. Failed/seedless events remain in the efficiency denominator; all valid perigees enter the residual statistics.
 
@@ -79,7 +127,7 @@ The unconditioned digitized mean-bias bin test on file 0 is marginal (p = 0.038)
 - Final file-0 truth/digitized runs have 0 outliers and 2 total holes each. Independent runs have 0 outliers and 6/5 holes. Hole counters are therefore not universally zero at 1,000 events. They are retained, and none is excluded from the resolution sample.
 - Legacy Track.ndf is still the sum of calibrated dimensions (2 × accepted measurements). Its CSV ratio is not a conventional reduced chi²; informative seed priors also affect the appropriate statistical interpretation. No decision in this study uses that ratio as a quality cut.
 - One/two-layer fits remain included and can be prior dominated. A detector-only study needs independently estimated seeds, observability/lever-arm requirements and calibrated measurement/cluster errors. The current result is explicitly truth assisted.
-- Residual bias remains, along with the radial-bin projection approximation, placeholder z variance, ignored charge-sharing correlations, constant-field approximation, disabled material effects, hard-coded positive/proton seed convention, and uncalibrated drift-time interpretation. These were not tuned away. Branching/cluster reconstruction and a full tracking-volume/material model remain future work.
+- Residual bias remains, along with the radial-bin projection approximation, ignored charge-sharing correlations, constant-field approximation, disabled material effects, hard-coded positive/proton seed convention, and drift-time calibration assumptions. The original z-variance placeholder has since been replaced by the timing-derived value described above; additional diffusion/calibration contributions remain open. Branching/cluster reconstruction and a full tracking-volume/material model remain future work.
 
 ## Reproduction
 

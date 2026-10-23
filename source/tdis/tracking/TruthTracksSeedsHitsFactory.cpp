@@ -122,7 +122,8 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     // -----------------------------------------------------------------------
     // Local cylinder covariance: u = R*phi, v = z, in mm².
     // Position remains global XYZ. Assume independent u/v errors and uniform
-    // charge within the pad's azimuthal width. The z variance is a placeholder.
+    // charge within the pad's azimuthal width. For z, sigma_z = v_drift*sigma_t;
+    // 5 cm/1000 ns and a 10 ns standard deviation give sigma_z = 0.5 mm.
     // The third slot is unused for this 2D measurement, not a radial constraint.
     // -----------------------------------------------------------------------
     const double padWidth = getPadApproxWidth(ring);
@@ -146,7 +147,8 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     hit.setPositionError(cov);
     hit.setCellID(cell_id);
     hit.setTime(static_cast<float>(mcHit.getTime()));  // EDM time is in ns.
-    hit.setTimeError(static_cast<float>(ActsUnits::ms / ActsUnits::ns));
+    constexpr double timeSigma = 10.0 * ActsUnits::ns;
+    hit.setTimeError(static_cast<float>(timeSigma / ActsUnits::ns));
     hit.setEdep(mcHit.getAdc());
     hit.setEdepError(0.0F);
     hit.setRawHit(mcHit);

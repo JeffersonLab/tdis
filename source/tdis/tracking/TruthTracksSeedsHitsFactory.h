@@ -52,8 +52,8 @@ namespace tdis::tracking {
 
         Parameter<double> m_cfg_hitZVariance{this,
             "acts:hit:cov:z",
-            100.0 / 12.0,
-            "[mm^2] Local z variance; placeholder (10 mm)^2/12, not a calibrated drift resolution"
+            0.5 * 0.5,
+            "[mm^2] Local z variance; sigma_z = (5 cm / 1000 ns) * 10 ns = 0.5 mm (1 sigma)"
         };
 
         /// Fractional (dimensionless) 1-sigma Gaussian smear applied to the

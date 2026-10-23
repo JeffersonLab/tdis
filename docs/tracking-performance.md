@@ -49,6 +49,14 @@ The signed field matches the measured EPC bending under the existing positive-ch
 seed convention. The text does not independently specify charge or Bz sign; verify
 that convention for other samples. Positive Bz remains available through `--bz`.
 
+The default local hit z resolution is σz = 0.5 mm (variance 0.25 mm²), from
+drift velocity 5 cm / 1000 ns and timing resolution σt = 10 ns. The latter is
+interpreted as a standard deviation. This is the timing contribution; additional
+diffusion and calibration uncertainties are not included. Both truth-position and
+digitized-position modes use this covariance, without adding position smearing.
+The stored hit time error is 10 ns and measurement time variance is 100 ns²;
+the KF continues to use spatial (Rφ, z) measurements only.
+
 The seed has 10% momentum smearing by default. `--seed 42` fixes the RNG sequence;
 `--momentum-smear 0` disables smearing. Seed q/p variance now follows that
 fractional uncertainty: `variance(q/p) = (smear × q/p_seed)²`. Set
