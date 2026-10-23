@@ -1,5 +1,8 @@
 # Tracking performance workflow
 
+See [architecture](architecture.md) for the reconstruction chain and
+[output schema](schema.md) for collection links, units and reference conventions.
+
 Run this from the workspace containing `tdis/` on the host:
 
 ```bash

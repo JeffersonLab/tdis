@@ -2,15 +2,18 @@
 
 The TDIS tracking system exports comprehensive tracking data to CSV format for analysis, debugging, and performance evaluation.
 
+See the [output schema](schema.md) for ROOT collections, relationships,
+covariance bases and schema versions, and [architecture](architecture.md) for
+the current processing chain.
+
 ## Overview
 
-- CSV files are generated with configurable prefix via `csv:prefix` parameter (default: "output")
-- Five interconnected CSV files are created per run:
+- CSV files share the `tdis:output` prefix (default: `tdis_output`).
+- Four interconnected CSV files are created per run:
   - `{prefix}.seeds.csv` - Track seeds with Monte Carlo truth and initial parameters
   - `{prefix}.hits.csv` - Hit measurements and detailed hit information
   - `{prefix}.fitted_tracks.csv` - Fitted track results after Kalman filtering
-  - `{prefix}.track_states.csv` - Detailed track states along trajectories
-  - `{prefix}.comparison.csv` - Performance comparison between truth and fitted values
+  - `{prefix}.track_states.csv` - Perigee/cylinder reference states
 - Column names are provided in the first line (header row) of each CSV file
 - All numeric values use standard scientific notation where appropriate
 - Files are linked through common ID fields enabling full traceability
@@ -179,7 +182,11 @@ cylinders, whose local coordinates are Rφ and z [mm].
 | 13 | `chi2` | float | Unavailable for reference states (`nan`) |
 | 14 | `type` | string | Reference type (`perigee`/`cylinder`) |
 
-### comparison.csv
+### Legacy comparison.csv (not currently produced)
+
+The current writer does not create this file. The description and examples below
+refer to an earlier proposed analysis table; use the performance analyzer's
+`tracks.csv` and `summary.json` for current truth/fit comparisons.
 
 Side-by-side comparison of MC truth, initial, and fitted parameters.
 
@@ -282,8 +289,8 @@ All units follow the Acts framework conventions:
 ## Implementation
 
 The enhanced CSV writer is implemented in:
-- Source: [`source/tdis/io/CsvWriterProcessor.hpp`](source/tdis/io/CsvWriterProcessor.hpp)
-- Track Fitting: [`source/tdis/tracking/KalmanFittingFactory.cpp`](source/tdis/tracking/KalmanFittingFactory.cpp)
+- Source: [CsvWriteProcessor.hpp](../source/tdis/io/CsvWriteProcessor.hpp)
+- Track Fitting: [KalmanFittingFactory.cpp](../source/tdis/tracking/KalmanFittingFactory.cpp)
 
 The writer processes:
 - Input: `TrackSeed` objects with `Measurement2D` and MC truth

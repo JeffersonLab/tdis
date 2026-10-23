@@ -2,6 +2,9 @@
 
 `tdis` software parameters (i.e. command line flags) that can be set when running TDIS applications.
 
+These configure a run; they do not define the saved [data schema](schema.md).
+See [architecture](architecture.md) for which services and algorithms are active.
+
 Parameters in JANA2 applications should be provided using `-p` flag. E.g. if parameter is `acts:log_level` then to set
 the parameter from command line one uses 
 
