@@ -136,7 +136,7 @@ void KalmanFittingFactory::fillMeasurements(
 }
 
 
-void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
+void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t eventNumber) {
 
     auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
     Acts::MagneticFieldContext magContext;
@@ -510,6 +510,26 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     }
 
     for (auto state : trackProxy.trackStatesReversed()) {
+        if (m_cfg_diagnosticEvent() >= 0 && eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()) &&
+            state.hasCalibrated() && state.calibratedSize() == 2 && state.hasPredicted()) {
+            const Acts::Vector2 residual = state.calibrated<2>() - state.predicted().head<2>();
+            const Acts::SquareMatrix2 innovation = state.predictedCovariance().topLeftCorner<2, 2>() +
+                                                   state.calibratedCovariance<2>();
+            const double chi2 = residual.dot(innovation.ldlt().solve(residual));
+            const auto index = state.getUncalibratedSourceLink().get<ActsExamples::IndexSourceLink>().index();
+            const auto raw = trackSeed.getMeasurements()[index].getHits()[0].getRawHit();
+            m_log->info("KF_STATE event={} seed={} state={} ring={} pad={} plane={} candidate={} "
+                        "measurement={} outlier={} hole={} residual_u={} residual_z={} "
+                        "innovation_chi2={} state_chi2={} qop_pred={} qop_filtered={} qop_smoothed={}",
+                        eventNumber, trackSeed.id().index, state.index(), raw.getRing(), raw.getPad(),
+                        raw.getPlane(), index,
+                        state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag),
+                        state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag),
+                        state.typeFlags().test(Acts::TrackStateFlag::HoleFlag), residual[0], residual[1],
+                        chi2, state.chi2(), state.predicted()[Acts::eBoundQOverP],
+                        state.hasFiltered() ? state.filtered()[Acts::eBoundQOverP] : NAN,
+                        state.hasSmoothed() ? state.smoothed()[Acts::eBoundQOverP] : NAN);
+        }
         if (state.hasSmoothed()) {
             m_log->debug(
                 "Smoothed params at {}: loc0={}, loc1={}, phi={}, theta={}, qOverP={}, momentum={}",
@@ -674,7 +694,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
 
     for (const auto& trackSeed : *m_in_trackSeeds()) {
-        processTrack(trackSeed);
+        processTrack(trackSeed, event_number);
     }
 }
 

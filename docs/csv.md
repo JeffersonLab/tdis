@@ -133,7 +133,7 @@ A perigee position is not an independently reconstructed interaction vertex.
 | 7-9 | `init_p`, `init_theta`, `init_phi` | Seed momentum [GeV] and angles [rad] |
 | 10-12 | `fit_p`, `fit_theta`, `fit_phi` | Fitted momentum [GeV] and angles [rad] |
 | 13 | `fit_pos_z` | Output position z [mm] |
-| 14 | `fit_chi2ndf` | Reduced chi-squared |
+| 14 | `fit_chi2ndf` | χ² divided by measured-coordinate count (legacy convention) |
 | 15 | `fit_type` | 0 perigee reached; 1 cylinder fallback |
 | 16-18 | `fit_px`, `fit_py`, `fit_pz` | Momentum components [GeV] |
 | 19-20 | `fit_pos_x`, `fit_pos_y` | Output position x and y [mm] |
@@ -145,6 +145,10 @@ A perigee position is not an independently reconstructed interaction vertex.
 Schema 102 renames the former `fit_vtx_x/y/z` columns to `fit_pos_x/y/z`;
 column positions are preserved and `fit_surface` is appended. Consumers should
 check `fit_type` before interpreting the position as a perigee.
+
+The legacy `fit_ndf` counts measured coordinates (2 × accepted 2D measurements),
+so `fit_chi2ndf` is not conventional reduced χ². No χ² selection is applied by
+the performance workflow.
 
 ### track_states.csv
 

@@ -100,6 +100,7 @@ The active component prefix is `TruthTracksSeedsHitsFactory`:
 - `acts:track_init:random_seed`: 0 uses random_device; a positive integer gives a fixed sequence (the performance runner uses 42 and one thread).
 - `acts:track_init:momentum_smear`: fractional momentum uncertainty, default 0.1; 0 disables smearing.
 - `acts:seed:cov:qoverp`: default -1 derives variance as `(momentum_smear × q/p_seed)²`; a nonnegative value overrides it in (e/GeV)².
+- `KalmanFittingFactory:diagnostic_event`: default -1 disables the per-layer trace; a nonnegative event ID enables innovation χ² and KF-state logging for that event.
 
 The original generator flag list below is retained for reference; use the active
 component prefix above for current commands.
