@@ -59,7 +59,9 @@ namespace tdis::tracking {
         Service<services::LogService> m_log_svc{this};
 
         // Use parameters:
-        Parameter<double> m_cfg_bz{this, "bz", 4.7, "Magnetic field in Z (Tesla); override with -pKalmanFittingFactory:bz=VALUE"};
+        // EPC truth XYZ bends counterclockwise for the existing positive-charge
+        // seed convention: q*Bz < 0. The field magnitude remains 4.7 T.
+        Parameter<double> m_cfg_bz{this, "bz", -4.7, "Signed Bz [T]; -4.7 matches EPC bending with positive-charge seeds"};
         Parameter<std::string> m_acts_level{this, "acts_level", "INFO", "ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)"};
 
 
