@@ -43,14 +43,22 @@ void TruthTracksSeedsHitsFactory::Configure() {
         throw std::invalid_argument("acts:hit:cov:z must be finite and positive [mm^2]");
     }
 
-    std::random_device rd;
-    m_generator = std::mt19937(rd());
+    if (m_cfg_randomSeed() < 0 || !std::isfinite(m_cfg_momentumSmear()) || m_cfg_momentumSmear() < 0) {
+        throw std::invalid_argument("random_seed and momentum_smear must be nonnegative and finite");
+    }
+    const auto seed = m_cfg_randomSeed() == 0 ? std::random_device{}()
+                                            : static_cast<unsigned>(m_cfg_randomSeed());
+    m_generator = std::mt19937(seed);
+    m_log->info("Seed momentum smear = {}; RNG seed = {}", m_cfg_momentumSmear(), seed);
 }
 
 // ---------------------------------------------------------------------------
 // generateNormal
 // ---------------------------------------------------------------------------
 double TruthTracksSeedsHitsFactory::generateNormal(double mean, double stddev) {
+    if (stddev == 0) {
+        return mean;
+    }
     std::normal_distribution<double> dist(mean, stddev);
     return dist(m_generator);
 }
@@ -209,6 +217,9 @@ tdis::TrackSeed TruthTracksSeedsHitsFactory::createTrackSeedWithParameters(
     // Previously it was incorrectly multiplied by ActsUnits::GeV (= 1000 in MeV
     // natural units), inflating the smear width by three orders of magnitude.
     const double smearedMomentum = momentum * generateNormal(1.0, m_cfg_momentumSmear());
+    if (!std::isfinite(smearedMomentum) || smearedMomentum <= 0) {
+        throw std::invalid_argument("Seed momentum must be finite and positive");
+    }
 
     // -----------------------------------------------------------------------
     // Vertex position

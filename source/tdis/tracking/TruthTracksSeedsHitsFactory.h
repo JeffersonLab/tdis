@@ -65,6 +65,11 @@ namespace tdis::tracking {
             "Fractional (dimensionless) 1-sigma Gaussian smear on seed momentum"
         };
 
+        Parameter<int> m_cfg_randomSeed{this,
+            "acts:track_init:random_seed", 0,
+            "Positive fixed RNG seed for reproducible studies; 0 uses random_device"
+        };
+
         Parameter<int> m_cfg_minHitsForSeed{this,
             "acts:seed:min_hits",
             3,

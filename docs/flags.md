@@ -93,6 +93,16 @@ The candidate-selection regression test can be run after building with
 Perigee transport and Cartesian covariance tests run with
 `ctest --test-dir build -R fitted_output --output-on-failure`.
 
+### Active seed-study controls
+
+The active component prefix is `TruthTracksSeedsHitsFactory`:
+
+- `acts:track_init:random_seed`: 0 uses random_device; a positive integer gives a fixed sequence (the performance runner uses 42 and one thread).
+- `acts:track_init:momentum_smear`: fractional momentum uncertainty, default 0.1; 0 disables smearing.
+
+The original generator flag list below is retained for reference; use the active
+component prefix above for current commands.
+
 ### Truth Track Parameter Generator Flags
 
 - `TruthTrackParameterGenerator:acts:seed:cov:loc0` - *1* - [mm^2] Variance for local position 0 (impact parameter)
@@ -103,7 +113,7 @@ Perigee transport and Cartesian covariance tests run with
 - `TruthTrackParameterGenerator:acts:seed:cov:time` - *10000000000* - [ns^2] Variance for time
 - `TruthTrackParameterGenerator:acts:seed:max_hits` - *3* - Maximum number of hits to include in a seed (typically 3-5 for initial seeding)
 - `TruthTrackParameterGenerator:acts:seed:min_hits` - *3* - Minimum number of hits to create a seed
-- `TruthTrackParameterGenerator:acts:track_init:momentum_smear` - *0.10000000000000001* - [GeV], Momentum smear for truth track initialization
+- `TruthTracksSeedsHitsFactory:acts:track_init:momentum_smear` - *0.1* - Dimensionless fractional momentum smearing
 - `TruthTrackParameterGenerator:acts:use_true_hit_position` - *1* - Use true hits xyz instead of digitized one
 - `TruthTrackParameterGenerator:InputTags` - *DigitizedMtpcMcTracks* - Input collection names
 - `TruthTrackParameterGenerator:loglevel` - *info* - Component log level
