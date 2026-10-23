@@ -3,6 +3,8 @@
 #include <cmath>       // For std::cos, std::sin, M_PI
 #include <stdexcept>   // For std::invalid_argument
 #include <utility>     // For std::pair
+#include <tuple>
+#include <vector>
 #include <Acts/Definitions/Units.hpp>
 
 // Constants
@@ -33,7 +35,7 @@ namespace tdis {
 
         Parameters:
         - ring (int): The ring index (0 is the innermost ring).
-        - pad (int): The pad index (0 is at or closest to φ=0, numbering is clockwise).
+        - pad (int): Pad centre index, increasing counterclockwise from φ=0.
 
         Returns:
         - std::pair<double, double>: X and Y coordinates of the pad center in Acts::UnitConstants.
@@ -55,7 +57,7 @@ namespace tdis {
 
         Parameters:
         - ring (int): The ring index (0 is the innermost ring).
-        - pad (int): The pad index (0 is at or closest to φ=0, numbering is clockwise).
+        - pad (int): Pad centre index, increasing counterclockwise from φ=0.
 
         Returns:
         - std::pair<double, double>: X and Y coordinates of the pad center in Acts::UnitConstants.
@@ -75,12 +77,9 @@ namespace tdis {
         // Determine the angular offset for odd rings
         const double theta_offset = (ring % 2 == 0) ? 0.0 : delta_theta / 2.0;
 
-        // Compute the angular center of the pad (in radians)
-        const double theta_clockwise = pad * delta_theta + theta_offset + delta_theta / 2.0;
-
-        // Convert to counterclockwise angle for standard coordinate system
-        //double theta_center = 2 * M_PI - theta_clockwise;
-        double theta_center = theta_clockwise;
+        // EPC indices identify pad centres. Adding another half pitch shifts
+        // every digitized hit by 25.75 mrad; only odd rings need a half stagger.
+        double theta_center = pad * delta_theta + theta_offset;
 
         // Ensure theta_center is within [0, 2π]
         if (theta_center < 0) {
