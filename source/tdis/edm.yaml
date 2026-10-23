@@ -7,7 +7,8 @@
 # Schema version is of 100*major + minor. Major has to be changed every time the schema changes
 # Version 100 stores times in ns; all MC, seed, and fitted angles are radians.
 # Version 101 stores TrackerHit positionError in local cylinder coordinates; layout unchanged.
-schema_version: 101
+# Version 102 adds fitted perigee/cylinder status conventions; layout unchanged.
+schema_version: 102
 
 options :
   # should getters / setters be prefixed with get / set?
@@ -358,8 +359,8 @@ datatypes :
     Description: "ACTS Bound Track parameters"
     Author: "W. Armstrong, S. Joosten, J. Osborn"
     Members:
-      - int32_t              type              // Type of track parameters (-1/seed, 0/head, ...)
-      - uint64_t             surface           // Surface for bound parameters (geometryID)
+      - int32_t              type              // -1 seed; fitted 0 beamline perigee, 1 cylinder reference
+      - uint64_t             surface           // GeometryID; fitted perigee uses 0 for the z-axis through the origin
       - tdis::Vector2f    loc               // 2D location on surface [mm]
       - float                theta             // Track polar angle [rad]
       - float                phi               // Track azimuthal angle [rad]
@@ -370,14 +371,14 @@ datatypes :
 
 
   tdis::Track:
-    Description: "Track information at the vertex"
+    Description: "Fitted track at beamline perigee, or cylinder fallback if extrapolation failed"
     Author: "S. Joosten, J. Osborn"
     Members:
-      - int32_t            type                           // Flag that defines the type of track
-      - tdis::Vector3f  position                          // Track 3-position at the vertex [mm]
-      - tdis::Vector3f  momentum                          // Track 3-momentum at the vertex [GeV]
+      - int32_t            type                           // 0 perigee extrapolation succeeded; 1 failed, cylinder fallback
+      - tdis::Vector3f  position                          // Track position at the output reference [mm]
+      - tdis::Vector3f  momentum                          // Track momentum at the output reference [GeV]
       - tdis::Cov6f     positionMomentumCovariance        // Covariance matrix in basis [x,y,z,px,py,pz]
-      - float              time                           // Track time at the vertex [ns]
+      - float              time                           // Track time at the output reference [ns]
       - float              timeError                      // Track time standard deviation [ns]
       - float              charge                         // Particle charge
       - float              chi2                           // Total chi2

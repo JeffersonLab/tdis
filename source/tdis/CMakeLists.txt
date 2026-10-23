@@ -74,6 +74,7 @@ add_executable(tdis
 
         tracking/KalmanFittingFactory.h
         tracking/KalmanFittingFactory.cpp
+        tracking/FittedTrackOutput.h
 )
 
 # ---------- FIND REQUIRED PACKAGES -------------
@@ -161,6 +162,10 @@ if(BUILD_TESTING)
     target_include_directories(test_layer_candidates PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${Acts_HOME_INCLUDE}")
     target_link_libraries(test_layer_candidates PRIVATE ActsCore ${ActsExamples_LIB})
     add_test(NAME layer_candidates COMMAND test_layer_candidates)
+    add_executable(test_fitted_output ../tests/test_fitted_output.cpp)
+    target_include_directories(test_fitted_output PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${Acts_HOME_INCLUDE}")
+    target_link_libraries(test_fitted_output PRIVATE ActsCore)
+    add_test(NAME fitted_output COMMAND test_fitted_output)
 endif()
 
 # Find the installed data model libraries alongside this installation on Linux.

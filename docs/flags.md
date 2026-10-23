@@ -80,8 +80,18 @@ the innermost candidate cylinder, with covariance transport, before tracking.
 This assumes the current near-axis, outward-going seed model; it is not a
 multi-turn track finder.
 
+After smoothing, the fitted inner-cylinder state is extrapolated backward to
+closest approach to the z-axis through the origin. This uses the same configured
+field and transports covariance without geometry navigation or material effects,
+with a 10 m path limit. `FittedTracks.type=0` indicates perigee success; `type=1`
+indicates extrapolation failure and cylinder fallback. The cylinder bound state
+is retained in either case; successful output also stores the perigee first.
+See [CSV/reference-state conventions](csv.md#fitted_trackscsv).
+
 The candidate-selection regression test can be run after building with
 `ctest --test-dir build -R layer_candidates --output-on-failure`.
+Perigee transport and Cartesian covariance tests run with
+`ctest --test-dir build -R fitted_output --output-on-failure`.
 
 ### Truth Track Parameter Generator Flags
 

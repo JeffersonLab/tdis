@@ -117,37 +117,44 @@ Contains measurement and hit information for each track seed.
 
 ### fitted_tracks.csv
 
-Contains fitted track results from Kalman filtering.
+Contains the fitted track at closest approach to the z-axis through the origin.
+`fit_type=0` means the inward extrapolation succeeded; `fit_type=1` means it
+failed and the output remains at the fitted inner cylinder. Position, momentum,
+time, and covariance refer to the same output state. Extrapolation transports
+covariance through the configured magnetic field and includes no material effects.
+A perigee position is not an independently reconstructed interaction vertex.
 
-**Primary Key:** Composite key of (`evt`, `track_id`)  
-**Foreign Key:** `seed_id` links to original seed
+**Primary Key:** (`evt`, `track_id`); `seed_id` refers to the original seed.
 
-| Column | Name | Type | Description |
-|--------|------|------|-------------|
-| 0 | `evt` | uint64 | Event number |
-| 1 | `track_id` | int | Fitted track unique ID |
-| 2 | `seed_id` | int | Original seed ID (FK) |
-| 3 | `fit_type` | int | Track type/quality flag |
-| 4-6 | `fit_p*` | float | Fitted momentum components [GeV/c] |
-| 7 | `fit_p` | float | Total fitted momentum [GeV/c] |
-| 8 | `fit_theta` | float | Fitted theta angle [rad] |
-| 9 | `fit_phi` | float | Fitted phi angle [rad] |
-| 10-12 | `fit_vtx_*` | float | Fitted vertex position [mm] |
-| 13 | `fit_time` | float | Fitted time [ns] |
-| 14 | `fit_time_err` | float | Time uncertainty [ns] |
-| 15 | `fit_charge` | float | Particle charge [e] |
-| 16 | `fit_chi2` | float | Total chi-squared |
-| 17 | `fit_ndf` | int | Degrees of freedom |
-| 18 | `fit_chi2ndf` | float | Reduced chi-squared |
-| 19 | `fit_pdg` | int | PDG hypothesis |
-| 20 | `n_states` | int | Number of track states |
-| 21 | `n_measurements` | int | Used measurements |
-| 22 | `n_outliers` | int | Outlier count |
-| 23 | `n_holes` | int | Missing hit count |
+| Column | Name | Description |
+|--------|------|-------------|
+| 0-2 | `evt`, `track_id`, `seed_id` | Event and object identifiers |
+| 3-6 | `mc_p`, `mc_theta`, `mc_phi`, `mc_vtx_z` | Truth momentum [GeV], angles [rad], vertex z [mm] |
+| 7-9 | `init_p`, `init_theta`, `init_phi` | Seed momentum [GeV] and angles [rad] |
+| 10-12 | `fit_p`, `fit_theta`, `fit_phi` | Fitted momentum [GeV] and angles [rad] |
+| 13 | `fit_pos_z` | Output position z [mm] |
+| 14 | `fit_chi2ndf` | Reduced chi-squared |
+| 15 | `fit_type` | 0 perigee reached; 1 cylinder fallback |
+| 16-18 | `fit_px`, `fit_py`, `fit_pz` | Momentum components [GeV] |
+| 19-20 | `fit_pos_x`, `fit_pos_y` | Output position x and y [mm] |
+| 21-23 | `fit_time`, `fit_time_err`, `fit_charge` | Time and uncertainty [ns], charge [e] |
+| 24-26 | `fit_chi2`, `fit_ndf`, `fit_pdg` | Fit quality and particle hypothesis |
+| 27-30 | `n_states`, `n_measurements`, `n_outliers`, `n_holes` | KF trajectory counts |
+| 31 | `fit_surface` | Primary geometry ID; 0 denotes the origin beamline perigee |
+
+Schema 102 renames the former `fit_vtx_x/y/z` columns to `fit_pos_x/y/z`;
+column positions are preserved and `fit_surface` is appended. Consumers should
+check `fit_type` before interpreting the position as a perigee.
 
 ### track_states.csv
 
-Contains track parameters at each surface along the trajectory.
+Contains reference states, not the full predicted/filtered/smoothed history.
+On extrapolation success, state 0 is the perigee and state 1 is the retained
+fitted cylinder. On failure, only the cylinder is stored. These rows correspond
+to the trajectory's `TrackParameters` relations in ROOT; parameter type 0 is
+perigee and 1 is cylinder. Surface ID 0 is the z-axis perigee through the origin;
+its local coordinates are ACTS signed d0 and z0 [mm]. Nonzero IDs identify the
+cylinders, whose local coordinates are Rφ and z [mm].
 
 **Primary Key:** Composite key of (`evt`, `track_id`, `state_idx`)
 
@@ -164,9 +171,9 @@ Contains track parameters at each surface along the trajectory.
 | 9 | `qoverp` | float | Charge/momentum [c/GeV] |
 | 10 | `p` | float | Momentum magnitude [GeV/c] |
 | 11 | `time` | float | Time [ns] |
-| 12 | `path_length` | float | Path from origin [mm] |
-| 13 | `chi2` | float | State chi-squared |
-| 14 | `type` | string | State type (measurement/outlier/hole) |
+| 12 | `path_length` | float | Unavailable (`nan`) |
+| 13 | `chi2` | float | Unavailable for reference states (`nan`) |
+| 14 | `type` | string | Reference type (`perigee`/`cylinder`) |
 
 ### comparison.csv
 
