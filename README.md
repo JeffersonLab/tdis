@@ -6,3 +6,6 @@ ACTS and JANA2 based package for TDIS multi-TPC chamber tracking reconstruction.
 
 Follow the [=>MAIN DOCUMENTATION<==](https://jeffersonlab.github.io/tdis/#/)
 
+To run 100 events and plot fit efficiency plus momentum, angle and radial DCA
+resolution, see the [tracking performance workflow](docs/tracking-performance.md).
+

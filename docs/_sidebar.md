@@ -7,5 +7,6 @@
 - [Resources](resources.md)
 - [Development](development/development.md)
 - [IFarm Tutorial](ifarm-tutorial.md)
+- [Tracking performance](tracking-performance.md)
 - [GitHub↗](https://github.com/JeffersonLab/tdis ':target=_blank')
 
