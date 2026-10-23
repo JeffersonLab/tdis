@@ -4,7 +4,7 @@ While JANA-2 is a full-featured framework, at this moment `tdis` package does no
 aim to be full reconstruction software for TDIS experiment and doesn't include any non-tracking features.
 Instead, it's an ACTS tracking module that only aims to get all the data needed
 for the reconstruction, do ACTS reconstruction, and save the output in a
-straightforward way (CSV).
+straightforward way (PODIO ROOT with CSV exports).
 
 In some sense, it is the simplest possible approach to apply ACTS to do the tracking,
 using JANA as glue framework, that helps to pass the data between parts, read the data and save sit.
@@ -26,7 +26,7 @@ This implies several implementation decisions:
 1. Try to keep data as simple as possible and as minimal as possible.
 2. Avoid bringing in our own data.
 3. We use ACTS data model as much as possible and try not to invent our own data structures as much as possible.
-4. It also means that we try not to adopt other blocks of reconstruction, into the code (e.g. digitization, events mixing, smearing, etc.)
+4. Detector digitization, charge sharing and event mixing remain outside this module; the current tracking validation does smear truth seed momentum.
 5. We try to get data, process data, and spit the data out. Keeping the data simple.
 
 This approach will allow estimating all the capabilities of ACTS package as well as do analysis

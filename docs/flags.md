@@ -23,6 +23,12 @@ Main TDIS application flags.
 
 ACTS (A Common Tracking Software) geometry and conversion flags.
 
+The TGeo options and older generator-prefixed entries below include historical
+settings. The current executable builds cylinders in code and does not read
+`g4sbs_mtpc.root`; use the active component controls described in
+[architecture](architecture.md) and the seed-study section below. The performance
+runner reports unused parameters as errors.
+
 - `acts:geometry` - *g4sbs_mtpc.root* - TGeo filename with geometry for ACTS
 - `acts:log_level` - *info* - log_level for acts: trace, debug, info, warn, error, critical, off
 - `acts:material_map` - *(empty)* - JSON/CBOR material map file path
