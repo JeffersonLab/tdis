@@ -58,6 +58,8 @@ runner reports unused parameters as errors.
 
 - `KalmanFittingFactory:acts_level` - *INFO* - ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)
 - `KalmanFittingFactory:bz` - *-4.7* - Signed magnetic field along Z, in Tesla. The magnitude is 4.7 T; negative Bz matches EPC bending with positive-charge seeds. Override with `tdis -pKalmanFittingFactory:bz=VALUE input.txt`. The effective field is printed at startup.
+- `KalmanFittingFactory:chi2_cut` - *0* - Maximum pre-update 2D innovation χ². Zero disables finite-χ² rejection; a positive limit rejects the selected cylinder candidate before the update. Invalid innovations are always rejected. `25` is a tested opt-in setting, not a calibrated probability cut.
+- `KalmanFittingFactory:diagnostic_event` - *-1* - Event ID for layer innovation/covariance traces and versioned `KF_POINT` predicted/filtered/smoothed XYZ and parameter records; `-2` traces all events, `-1` disables traces.
 - `KalmanFitterGenerator:InputTags` - *TruthTrackSeeds* - Input collection names
 - `KalmanFitterGenerator:loglevel` - *info* - Component log level
 - `KalmanFitterGenerator:OutputTags` - *FittedTrajectories,FittedTrackParameters,FittedTracks* - Output collection names
@@ -76,7 +78,10 @@ S = predicted local covariance + measurement covariance
 ```
 
 The smallest finite χ² wins; exact ties keep input order. This is a greedy
-single-track choice, without branching or an additional χ² rejection threshold.
+single-track choice, without branching. The optional `chi2_cut` rejects the best
+candidate if its innovation χ² exceeds the limit; the prediction then continues
+without that measurement update. Rejected choices retain their original
+measurement relation and pre-update χ² in the trajectory outlier outputs.
 The Rφ residual is periodic. The chosen measurement ID is retained in fitted
 track relations and reused during backward filtering. Unchosen candidates remain
 in `Measurements2D`; they are not classified as fitted outliers.
@@ -96,6 +101,12 @@ with a 10 m path limit. `FittedTracks.type=0` indicates perigee success; `type=1
 indicates extrapolation failure and cylinder fallback. The cylinder bound state
 is retained in either case; successful output also stores the perigee first.
 See [CSV/reference-state conventions](csv.md#fitted_trackscsv).
+
+If ACTS returns accepted filter states without reference parameters after a
+last-layer rejection, TDIS explicitly smooths the chain and uses the first
+accepted cylinder. Recovery requires every requested cylinder to have been
+visited; incomplete navigation remains a fit failure. See the
+[hit-level study](kf-hit-diagnostics-study.md) for evidence and remaining issues.
 
 The candidate-selection regression test can be run after building with
 `ctest --test-dir build -R layer_candidates --output-on-failure`.

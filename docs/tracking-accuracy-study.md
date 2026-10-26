@@ -2,6 +2,10 @@
 
 Updated 2026-10-23 10:17 PDT.
 
+The later [hit-level KF study](kf-hit-diagnostics-study.md) adds first-50-event
+readout displays, a configurable innovation gate and a last-layer completion
+fix. The tables below retain this earlier uncut baseline.
+
 The requested dp/p < 40% target is met for both truth-XYZ and digitized reconstruction, including the full-sample standard deviation and RMSE. No residual or chi² rejection was added. Matched event rotations show no detectable algorithmic phi dependence at the tested precision.
 
 These remain truth-assisted fits with a 10% momentum seed. The correctly propagated seed uncertainty matters at high momentum, where the pad measurements alone constrain curvature weakly. These numbers are not independent detector-only momentum resolutions.

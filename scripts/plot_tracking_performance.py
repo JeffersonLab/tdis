@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
-"""Analyze TDIS schema-102 ROOT output using truth/seed/trajectory relations."""
+"""Plot tracking performance from all events in reconstructed ROOT data.
+
+Environment: run inside the TDIS image (./go_tdis), from /worksim. Requires
+PyROOT, PODIO metadata support and NumPy; no TDIS data-model dictionaries.
+
+Inputs (read-only):
+    Required: a schema-102 .tdisedm.root reconstruction file containing event
+    metadata, MC tracks, seeds, fitted tracks/trajectories and parameters.
+    Optional sibling run.json: reconstruction settings and requested event
+    count. --requested-events overrides that count in the report; it does not
+    limit how many ROOT events are analyzed. Raw text and CSV files are not
+    inputs. See ../docs/schema.md for the schema-102 field conventions.
+
+Outputs under -o OUTDIR (must be new; parent directories are created):
+    performance.pdf                 Residual distributions and efficiencies.
+    resolutions.png, efficiency.png PNG versions of the main report pages.
+    phi_dependence.pdf/.png         Residual biases/widths versus truth phi.
+    phi_bins.csv, phi_summary.json  Phi-bin statistics and harmonic diagnostics.
+    tracks.csv                      One row per MC track: fit status/residuals.
+    efficiency.csv                  Binned truth-assisted fitting efficiencies.
+    summary.md, summary.json        Counts, statistics, provenance and results.
+    Omitting -o creates a unique performance-* directory beside the ROOT file.
+    Input files and existing output directories are never overwritten.
+
+Example (from /worksim; all ROOT events are analyzed):
+
+    RUN=tdis/tmp/track-event-display-20261026/states-run
+    python3 tdis/python/plot_tracking_performance.py "$RUN/reco.tdisedm.root" -o tdis/tmp/performance-report-new
+
+For a fitted event display, run plot_event_display.py ROOTFILE --event N -o
+NEWDIR separately. For independent raw-text hit plots, use plot_kf_diagnostics.py.
+"""
 
 import argparse
 from array import array
@@ -296,7 +327,7 @@ def read_tracks(path):
 
 
 def distribution(values, name):
-    """Full-sample widths plus an ePIC-style robust-window Gaussian core fit."""
+    """Full-sample widths plus a robust-window Gaussian core fit."""
     values = np.asarray(values, dtype=float)
     values = values[np.isfinite(values)]
     summary = dict(n=int(values.size), mean=None, std=None, width68=None,
@@ -509,6 +540,8 @@ def analyze(source, directory, requested_events=None):
     lines = ['# TDIS tracking performance', '', f'Input: `{source}`',
              f'Processed events: {processed}; requested: {requested_events if requested_events is not None else "not specified"}.',
              f'Truth tracks: {len(rows)}; seedless: {diagnostics["seedless_truth"]}; cylinder fallbacks: {diagnostics["cylinder_fallbacks"]}.', '']
+    if 'chi2_cut' in run_info:
+        lines += [f'Reconstruction innovation χ² limit: {run_info["chi2_cut"]} (0 disables).', '']
     for key, title in [('fit_efficiency', 'Fit efficiency'), ('perigee_efficiency', 'Perigee efficiency')]:
         estimate = summary[key]
         if estimate['value'] is None:
@@ -524,7 +557,7 @@ def analyze(source, directory, requested_events=None):
         gaussian = (f'{number(info["gaussian_sigma"])} ± {number(info["gaussian_sigma_error"])}'
                     if info['gaussian_sigma'] is not None else info['gaussian_status'])
         lines.append(f'| {key} | {info["n"]} | {number(info["mean"])} | {number(info["std"])} | {number(info["width68"])} | {gaussian} | {number(info["gaussian_chi2_ndf"])} |')
-    lines += ['', 'Efficiency denominator: all truth tracks in processed ROOT events, with no hit-count or chi2 cut. '
+    lines += ['', 'Efficiency denominator: all truth tracks in processed ROOT events, with no additional analysis cuts. '
               'Counts are unique truth particles, joined through track → trajectory → seed → MC relations.',
               'Resolution selection: finite, nonzero-q/p perigee states only. Phi residuals are wrapped to [−π, π]. '
               'DCAr is signed loc.a [mm], assuming the input truth vertex lies on the beam axis (truth DCAr = 0).',

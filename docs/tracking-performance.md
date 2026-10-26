@@ -3,6 +3,29 @@
 See [architecture](architecture.md) for the reconstruction chain and
 [output schema](schema.md) for collection links, units and reference conventions.
 
+## Minimal Bash example
+
+Enter `./go_tdis`, then run from `/worksim`:
+
+```bash
+bash tdis/python/run_tracking_performance.sh \
+  EPC-4p7T-NoxyzHits-ChargeSharing/g4sbsout_EPCEvents_0.txt -n 100
+
+# Add --analyze to run the performance study after reconstruction succeeds.
+bash tdis/python/run_tracking_performance.sh \
+  EPC-4p7T-NoxyzHits-ChargeSharing/g4sbsout_EPCEvents_0.txt -n 100 --analyze
+```
+
+This example runs the installed TDIS executable on existing digitized simulation
+input, using the defaults below. It creates a unique `tdis/tmp/performance-*`
+directory, or accepts `-o NEW_DIRECTORY`. ROOT/CSV output, the command and console
+output in `reconstruction.log`, and basic settings in `run.json` are always saved.
+`--analyze` adds `analysis.log` and the `performance/` report. The Bash manifest
+contains the requested count, field and seed/fitter settings; use the Python
+runner below when you need hashes, Git/image identity or configuration options.
+
+## Configurable Python runner
+
 Run this from the workspace containing `tdis/` on the host:
 
 ```bash
@@ -10,7 +33,7 @@ python3 tdis/python/run_tracking_performance.py \
   EPC-4p7T-xyzHits-ChargeSharing/g4sbsout_EPCEvents_0.txt
 ```
 
-Only two scripts are needed: `run_tracking_performance.py` runs reconstruction
+For this workflow, `run_tracking_performance.py` runs reconstruction
 and analysis; `plot_tracking_performance.py` makes the complete report from an
 existing ROOT file, including phi diagnostics. The analyzer is self-contained.
 
@@ -70,6 +93,9 @@ would instead encode exactly known momentum.
 
 `--diagnostic-event 99` logs per-layer measurement IDs, innovation/state χ²,
 measurement/outlier/hole flags and predicted/filtered/smoothed q/p for that event.
+Use `--diagnostic-event -2` for every event, including local prediction covariance
+and smoothed residuals. `--chi2-cut 25` enables a pre-update innovation gate;
+`--chi2-cut 0` disables it. The manifest and report record the limit.
 No χ² rejection is enabled by default. The legacy `ndf` field still counts measured
 coordinates; do not interpret its ratio as conventional reduced χ².
 
@@ -110,11 +136,27 @@ independent pattern-recognition efficiency.
 An exported fit counts toward fit efficiency. A finite perigee with nonzero q/p
 counts toward perigee efficiency and the residual distributions. Cylinder
 fallbacks count toward fit efficiency but are excluded from perigee residuals.
-No hit-count, chi2, residual or charge-sign cut is applied. Each truth particle
+No additional analysis hit-count, chi2, residual or charge-sign cut is applied.
+Reconstruction can use the optional `--chi2-cut`; seedless and failed fits still
+remain in the denominator. Each truth particle
 counts once; duplicate fits are reported and the first valid perigee in collection
 order is used. Matching follows the PODIO track → trajectory → seed → MC relations,
 checking collection IDs and indices; entry order alone is not used for matching.
 Older schemas are rejected because a cylinder's loc.a is not radial DCA.
+
+For readout-plane displays, pass the raw digitized text file directly to
+[plot_kf_diagnostics.py](../python/plot_kf_diagnostics.py). It uses NumPy/Matplotlib
+on the host without processed files. Both six- and nine-column hit formats,
+including zero/one-hit events, are supported. See the
+[study and reproduction commands](kf-hit-diagnostics-study.md).
+Displays default to one event; `--event N` selects the original text event label. Each event
+PDF has one populated plane per page; empty planes are skipped.
+Use `--event-range FIRST LAST` for an inclusive overlay of those raw event IDs.
+Individual hit colors show input TDC/arrival time [ns], with a shared scale
+across the selected events and planes.
+Independent KF candidate χ², residual and multiplicity audits remain available
+with an explicit `--processed` option and the reconstruction output prefix;
+that mode uses processed JANA event IDs and requires CSV/log/manifest inputs.
 
 ```text
 dp/p [%] = 100 × (abs(1/qOverP_fit) − p_truth) / p_truth

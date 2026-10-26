@@ -149,13 +149,20 @@ classified as rejected outliers. Only the two spatial coordinates are fitted;
 drift time is not a third independent measurement of z.
 
 The fitter uses the gain-matrix updater and smoother, with the first accepted
-measurement reference strategy. No chi² rejection/outlier finder is configured;
-the default outlier finder is inactive. Extra reverse filtering is not enabled
+measurement reference strategy. An innovation outlier finder rejects the chosen
+candidate before its update when `chi2_cut > 0` and χ² exceeds that limit;
+the default zero leaves finite-χ² rejection disabled. Outlier χ² and original
+measurement links are retained. Extra reverse filtering is not enabled
 by the current zero momentum threshold. Energy loss and multiple scattering
 are disabled, and navigation resolves sensitive surfaces without material/passive
 surfaces. A successful return is not a statistical track-quality selection.
 
 ## 5. Smooth, extrapolate and export
+
+If ACTS returns filtered measurements without a fitted reference after a final
+layer outlier, explicitly smooth the existing chain and bind the first accepted
+state. This recovery requires all requested cylinders to have been visited;
+incomplete navigation remains a failure. No seed parameters replace fitted states.
 
 After smoothing, the fitted cylinder reference and its covariance are retained.
 The output code separately propagates this fitted state backward through the
@@ -177,7 +184,16 @@ their PODIO relations. CSV exports are `PREFIX.seeds.csv`, `PREFIX.hits.csv`,
 `PREFIX.fitted_tracks.csv` and `PREFIX.track_states.csv`. The state CSV contains
 reference states, not the full predicted/filtered/smoothed history; unavailable
 path length and reference-state measurement χ² are NaN. Event-selective
-`diagnostic_event` logging supplies layer innovations, flags and q/p values.
+`diagnostic_event` logging supplies layer innovations, prediction covariance,
+flags and q/p values; `-2` selects all events. The
+[hit diagnostic plotter](../python/plot_kf_diagnostics.py) independently checks
+candidate χ² in explicit `--processed` mode using these outputs. Its default
+readout display instead reads only a raw digitized text file, supporting both
+six- and nine-column hits. Each event PDF contains only populated readout planes,
+with one plane per page; `--event N` selects the original text label (or the
+processed JANA event ID in `--processed` mode).
+An inclusive `--event-range FIRST LAST` overlays those events per plane;
+hit colors show input TDC/arrival time [ns] on a shared scale.
 
 ## 6. Evaluate performance
 
@@ -186,7 +202,8 @@ The runner defaults to 100 events; current validation studies explicitly use
 seed → MC through PODIO relations. Every truth track in processed events enters
 the efficiency denominator, including seedless and failed fits. Only valid
 perigees enter residual distributions; cylinder fallbacks are counted separately.
-There is no chi², minimum-layer, residual or charge-sign selection.
+There is no additional analysis chi², minimum-layer, residual or charge-sign
+selection. Reconstruction may apply the optional innovation gate.
 
 Reports show dp/p, theta, wrapped phi and signed radial DCA = perigee loc.a,
 with full-sample SD, central 68% width and Gaussian core fits. Phi-bin and

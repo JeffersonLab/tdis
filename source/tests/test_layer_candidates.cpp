@@ -66,10 +66,39 @@ void checkSelection(bool reversed, bool covarianceWeighted, bool seam) {
             "Backward filtering changed the selected candidate");
 }
 
+void checkInnovationGate() {
+    Acts::VectorMultiTrajectory states;
+    auto state = states.makeTrackState();
+    state.predicted().setZero();
+    state.predictedCovariance().setIdentity();
+    Acts::VectorMultiTrajectory::ConstTrackStateProxy constState{state};
+    // Innovation S = [[2,1],[1,2]], r=(3,3), so chi2=6 exactly.
+    Acts::SquareMatrix2 covariance;
+    covariance << 1., 1., 1., 1.;
+    state.allocateCalibrated(Acts::Vector2{3., 3.}, covariance);
+    tdis::tracking::InnovationOutlierFinder boundary(6.);
+    tdis::tracking::InnovationOutlierFinder tighter(5.99);
+    tdis::tracking::InnovationOutlierFinder disabled(0.);
+    require(!boundary(constState), "Gate rejects an inclusive chi2 boundary");
+    require(tighter(constState), "Gate ignores correlated innovation chi2");
+    require(!disabled(constState), "Zero cut must disable finite-chi2 rejection");
+    // Increasing prediction uncertainty must reduce chi2 (use P+V, not V).
+    state.predictedCovariance() *= 100.;
+    require(!tighter(constState), "Gate ignores prediction uncertainty");
+    state.predictedCovariance()(0, 0) = NAN;
+    require(disabled(constState), "Non-finite innovation was accepted");
+    state.predictedCovariance().setZero();
+    require(disabled(constState), "Singular innovation was accepted");
+    state.predictedCovariance().setIdentity();
+    state.predictedCovariance()(0, 0) = -10.;
+    require(disabled(constState), "Indefinite innovation was accepted");
+}
+
 int main() {
     checkSelection(false, false, false);
     checkSelection(true, false, false);
     checkSelection(false, true, false);
     checkSelection(false, false, true);
+    checkInnovationGate();
     std::cout << "PASS: repeated pad candidates, input-order reversal, covariance weighting, cylinder seam, retained association\n";
 }

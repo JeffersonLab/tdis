@@ -47,6 +47,9 @@ void KalmanFittingFactory::Configure() {
     if (!std::isfinite(m_cfg_bz())) {
         throw std::invalid_argument("KalmanFittingFactory:bz must be finite [T]");
     }
+    if (!std::isfinite(m_cfg_chi2Cut()) || m_cfg_chi2Cut() < 0) {
+        throw std::invalid_argument("KalmanFittingFactory:chi2_cut must be finite and nonnegative");
+    }
     // Setup magnetic field
     auto magneticField = std::make_shared<Acts::ConstantBField>(
         Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
@@ -63,6 +66,7 @@ void KalmanFittingFactory::Configure() {
     // Logging
     m_log = m_log_svc->logger("KalmanFittingFactory");
     m_log->info("Using Bz = {} T", m_cfg_bz());
+    m_log->info("Pre-update innovation chi2 cut = {} (0 disables)", m_cfg_chi2Cut());
 
     // Acts logging
     auto actsLvlStr = m_acts_level();
@@ -136,7 +140,7 @@ void KalmanFittingFactory::fillMeasurements(
 }
 
 
-void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t eventNumber) {
+void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, int32_t runNumber, uint64_t eventNumber) {
 
     auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
     Acts::MagneticFieldContext magContext;
@@ -318,6 +322,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
         podioPerigee.z);
 
     LayerCandidateCalibrator calibrator(*actsMeasurements);
+    InnovationOutlierFinder outlierFinder(m_cfg_chi2Cut());
 
     Acts::GainMatrixUpdater        kfUpdater;
     Acts::GainMatrixSmoother       kfSmoother;
@@ -338,6 +343,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
         &Acts::GainMatrixSmoother::operator()<Acts::VectorMultiTrajectory>>(&kfSmoother);
     extensions.reverseFilteringLogic.connect<
         &SimpleReverseFilteringLogic::doBackwardFiltering>(&reverseFilteringLogic);
+    extensions.outlierFinder.connect<&InnovationOutlierFinder::operator()>(&outlierFinder);
 
     // Export the fit at an accepted measurement surface. ACTS propagates the
     // perigee seed and its covariance to the cylinders before candidate selection.
@@ -419,6 +425,32 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
     // hypothesis actually used for fitting and for the inward time transport.
     trackProxy.setParticleHypothesis(initialParameters.particleHypothesis());
     auto  mcTrack    = trackSeed.getMcTrack();
+
+    // ACTS can return accepted filter states without a reference when geometry
+    // navigation ends before its finalization actor runs after a last-layer
+    // outlier. Recover only when all requested cylinders were visited: an
+    // incomplete navigation must remain a failure. Never substitute the seed.
+    if (!trackProxy.hasReferenceSurface() && trackProxy.nMeasurements() > 0 &&
+        calibrator.selectedCandidates().size() == sourceLinks.size()) {
+        auto smoothed = kfSmoother(geoContext, vTraj, trackProxy.tipIndex(), *m_acts_logger);
+        if (smoothed.ok()) {
+            for (auto state : trackProxy.trackStatesReversed()) {
+                if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag) &&
+                    !state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag) && state.hasSmoothed()) {
+                    trackProxy.parameters() = state.smoothed();
+                    trackProxy.covariance() = state.smoothedCovariance();
+                    trackProxy.setReferenceSurface(state.referenceSurface().getSharedPtr());
+                }
+            }
+            m_log->info("KF reference recovered from smoothed measurements: event={} seed={}",
+                        eventNumber, trackSeed.id().index);
+        }
+    }
+    if (!trackProxy.hasReferenceSurface()) {
+        m_log->warn("KF has no fitted reference: event={} seed={} visited_cylinders={} requested_cylinders={}",
+                    eventNumber, trackSeed.id().index,
+                    calibrator.selectedCandidates().size(), sourceLinks.size());
+    }
 
     // -------------------------------------------------------------------------
     // RC1: Guard against a valid result that still holds an invalid reference
@@ -509,8 +541,68 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
                     trackSeed.id().index, perigeeResult.error().message());
     }
 
+    // Optional portable state points for the event display. Smooth a copy:
+    // hasSmoothed() only proves storage exists, and diagnostics must not change
+    // the fitted result. An explicit successful smoothing initializes the copy.
+    if (m_cfg_diagnosticEvent() == -2 || (m_cfg_diagnosticEvent() >= 0 &&
+        eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()))) {
+        auto diagnosticStates = vTraj;
+        bool validStates = true;
+        diagnosticStates.visitBackwards(trackProxy.tipIndex(), [&](const auto& state) {
+            validStates = validStates && state.hasPredicted() && state.hasFiltered() &&
+                state.predicted().allFinite() && state.filtered().allFinite() &&
+                state.predictedCovariance().allFinite() && state.filteredCovariance().allFinite();
+        });
+        const bool smoothed = validStates &&
+            kfSmoother(geoContext, diagnosticStates, trackProxy.tipIndex(), *m_acts_logger).ok();
+        diagnosticStates.visitBackwards(trackProxy.tipIndex(), [&](const auto& state) {
+            int measurementId = -1;
+            if (state.hasUncalibratedSourceLink()) {
+                const auto index = state.getUncalibratedSourceLink()
+                    .template get<ActsExamples::IndexSourceLink>().index();
+                if (index < trackSeed.getMeasurements().size()) {
+                    measurementId = trackSeed.getMeasurements()[index].getObjectID().index;
+                }
+            }
+            for (const std::string stage : {"predicted", "filtered", "smoothed"}) {
+                if ((stage == "predicted" && !state.hasPredicted()) ||
+                    (stage == "filtered" && !state.hasFiltered()) ||
+                    (stage == "smoothed" && (!smoothed || !state.hasSmoothed()))) {
+                    continue;
+                }
+                const Acts::BoundVector parameters = stage == "predicted" ? state.predicted() :
+                    stage == "filtered" ? state.filtered() : state.smoothed();
+                if (!parameters.allFinite() || parameters[Acts::eBoundQOverP] == 0 ||
+                    parameters[Acts::eBoundTheta] <= 0 || parameters[Acts::eBoundTheta] >= M_PI) {
+                    continue;
+                }
+                const Acts::BoundTrackParameters bound(state.referenceSurface().getSharedPtr(),
+                    parameters, std::nullopt, trackProxy.particleHypothesis());
+                const Acts::Vector3 position = bound.position(geoContext) / Acts::UnitConstants::mm;
+                const Acts::Vector3 momentum = bound.momentum() / Acts::UnitConstants::GeV;
+                m_log->info("KF_POINT version=1 run={} event={} seed={} state={} surface={} "
+                    "meas_id={} measurement={} outlier={} hole={} stage={} path_mm={:.17g} "
+                    "x={:.17g} y={:.17g} z={:.17g} px={:.17g} py={:.17g} pz={:.17g} "
+                    "loc0={:.17g} loc1={:.17g} phi={:.17g} theta={:.17g} qop={:.17g} time_ns={:.17g}",
+                    runNumber, eventNumber, trackSeed.id().index, state.index(),
+                    state.referenceSurface().geometryId().value(), measurementId,
+                    int(state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag)),
+                    int(state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag)),
+                    int(state.typeFlags().test(Acts::TrackStateFlag::HoleFlag)), stage,
+                    state.pathLength() / Acts::UnitConstants::mm,
+                    position.x(), position.y(), position.z(), momentum.x(), momentum.y(), momentum.z(),
+                    parameters[Acts::eBoundLoc0] / Acts::UnitConstants::mm,
+                    parameters[Acts::eBoundLoc1] / Acts::UnitConstants::mm,
+                    parameters[Acts::eBoundPhi], parameters[Acts::eBoundTheta],
+                    parameters[Acts::eBoundQOverP] * Acts::UnitConstants::GeV,
+                    parameters[Acts::eBoundTime] / Acts::UnitConstants::ns);
+            }
+        });
+    }
+
     for (auto state : trackProxy.trackStatesReversed()) {
-        if (m_cfg_diagnosticEvent() >= 0 && eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()) &&
+        if ((m_cfg_diagnosticEvent() == -2 || (m_cfg_diagnosticEvent() >= 0 &&
+            eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()))) &&
             state.hasCalibrated() && state.calibratedSize() == 2 && state.hasPredicted()) {
             const Acts::Vector2 residual = state.calibrated<2>() - state.predicted().head<2>();
             const Acts::SquareMatrix2 innovation = state.predictedCovariance().topLeftCorner<2, 2>() +
@@ -518,9 +610,16 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
             const double chi2 = residual.dot(innovation.ldlt().solve(residual));
             const auto index = state.getUncalibratedSourceLink().get<ActsExamples::IndexSourceLink>().index();
             const auto raw = trackSeed.getMeasurements()[index].getHits()[0].getRawHit();
+            Acts::Vector2 smoothedResidual = Acts::Vector2::Constant(NAN);
+            if (state.hasSmoothed()) {
+                smoothedResidual = state.calibrated<2>() - state.smoothed().head<2>();
+            }
             m_log->info("KF_STATE event={} seed={} state={} ring={} pad={} plane={} candidate={} "
                         "measurement={} outlier={} hole={} residual_u={} residual_z={} "
-                        "innovation_chi2={} state_chi2={} qop_pred={} qop_filtered={} qop_smoothed={}",
+                        "innovation_chi2={} state_chi2={} qop_pred={} qop_filtered={} qop_smoothed={} "
+                        "meas_id={} candidates={} predicted_u={} predicted_z={} "
+                        "pred_cov_uu={} pred_cov_uz={} pred_cov_zz={} "
+                        "smoothed_residual_u={} smoothed_residual_z={}",
                         eventNumber, trackSeed.id().index, state.index(), raw.getRing(), raw.getPad(),
                         raw.getPlane(), index,
                         state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag),
@@ -528,7 +627,12 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, uint64_t even
                         state.typeFlags().test(Acts::TrackStateFlag::HoleFlag), residual[0], residual[1],
                         chi2, state.chi2(), state.predicted()[Acts::eBoundQOverP],
                         state.hasFiltered() ? state.filtered()[Acts::eBoundQOverP] : NAN,
-                        state.hasSmoothed() ? state.smoothed()[Acts::eBoundQOverP] : NAN);
+                        state.hasSmoothed() ? state.smoothed()[Acts::eBoundQOverP] : NAN,
+                        trackSeed.getMeasurements()[index].getObjectID().index,
+                        calibrator.candidateCount(state.referenceSurface().geometryId()),
+                        state.predicted()[Acts::eBoundLoc0], state.predicted()[Acts::eBoundLoc1],
+                        state.predictedCovariance()(0, 0), state.predictedCovariance()(0, 1),
+                        state.predictedCovariance()(1, 1), smoothedResidual[0], smoothedResidual[1]);
         }
         if (state.hasSmoothed()) {
             m_log->debug(
@@ -694,7 +798,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
 
     for (const auto& trackSeed : *m_in_trackSeeds()) {
-        processTrack(trackSeed, event_number);
+        processTrack(trackSeed, run_number, event_number);
     }
 }
 
