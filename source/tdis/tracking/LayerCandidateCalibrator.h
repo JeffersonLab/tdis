@@ -17,6 +17,30 @@
 
 namespace tdis::tracking {
 
+// Reject before the update, using the predicted innovation covariance rather
+// than the smaller, measurement-biased filtered/smoothed residual covariance.
+class InnovationOutlierFinder {
+public:
+    explicit InnovationOutlierFinder(double chi2Cut) : m_chi2Cut(chi2Cut) {}
+
+    bool operator()(Acts::VectorMultiTrajectory::ConstTrackStateProxy state) const {
+        const Acts::Vector2 residual = state.calibrated<2>() - state.predicted().head<2>();
+        const Acts::SquareMatrix2 innovation =
+            state.predictedCovariance().topLeftCorner<2, 2>() + state.calibratedCovariance<2>();
+        const Eigen::LDLT<Acts::SquareMatrix2> decomposition(innovation);
+        if (!residual.allFinite() || !innovation.allFinite() ||
+            decomposition.info() != Eigen::Success || !decomposition.isPositive() ||
+            (decomposition.vectorD().array() <= 0).any()) {
+            return true;
+        }
+        const double chi2 = residual.dot(decomposition.solve(residual));
+        return !std::isfinite(chi2) || chi2 < 0 || (m_chi2Cut > 0 && chi2 > m_chi2Cut);
+    }
+
+private:
+    double m_chi2Cut;
+};
+
 // One greedy choice per cylinder: compare all candidate positions to the
 // predicted state using chi2 = residual^T (H P H^T + V)^-1 residual.
 // Keep the chosen source link for backward filtering and EDM provenance.
@@ -75,11 +99,20 @@ public:
         const Acts::SquareMatrix2 covariance = measurement.covariance();
         state.allocateCalibrated(calibrated, covariance);
         state.setProjectorSubspaceIndices(std::array{Acts::eBoundLoc0, Acts::eBoundLoc1});
+        // ACTS skips the updater for outliers, so otherwise their stored chi2
+        // stays zero. Preserve the pre-update value for rejected states too.
+        const Acts::Vector2 residual = calibrated - predicted;
+        const Acts::SquareMatrix2 innovation =
+            state.predictedCovariance().topLeftCorner<2, 2>() + covariance;
+        state.chi2() = residual.dot(innovation.ldlt().solve(residual));
         state.setUncalibratedSourceLink(Acts::SourceLink{
             ActsExamples::IndexSourceLink{geometryId, selected->second}});
     }
 
     const auto& selectedCandidates() const { return m_selected; }
+    std::size_t candidateCount(Acts::GeometryIdentifier geometryId) const {
+        return m_candidates.at(geometryId).size();
+    }
 
 private:
     const ActsExamples::MeasurementContainer& m_measurements;

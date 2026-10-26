@@ -52,8 +52,8 @@ namespace tdis::tracking {
 
         Parameter<double> m_cfg_hitZVariance{this,
             "acts:hit:cov:z",
-            100.0 / 12.0,
-            "[mm^2] Local z variance; placeholder (10 mm)^2/12, not a calibrated drift resolution"
+            0.5 * 0.5,
+            "[mm^2] Local z variance; sigma_z = (5 cm / 1000 ns) * 10 ns = 0.5 mm (1 sigma)"
         };
 
         /// Fractional (dimensionless) 1-sigma Gaussian smear applied to the
@@ -63,6 +63,11 @@ namespace tdis::tracking {
             "acts:track_init:momentum_smear",
             0.1,
             "Fractional (dimensionless) 1-sigma Gaussian smear on seed momentum"
+        };
+
+        Parameter<int> m_cfg_randomSeed{this,
+            "acts:track_init:random_seed", 0,
+            "Positive fixed RNG seed for reproducible studies; 0 uses random_device"
         };
 
         Parameter<int> m_cfg_minHitsForSeed{this,
@@ -111,8 +116,8 @@ namespace tdis::tracking {
         };
         Parameter<double> m_cfg_covQOverP{this,
             "acts:seed:cov:qoverp",
-            0.1,
-            "[(e/GeV)^2] Variance for charge over momentum"
+            -1.0,
+            "[(e/GeV)^2] q/p variance; -1 derives it from fractional momentum smearing"
         };
         Parameter<double> m_cfg_covTime{this,
             "acts:seed:cov:time",

@@ -59,7 +59,13 @@ namespace tdis::tracking {
         Service<services::LogService> m_log_svc{this};
 
         // Use parameters:
-        Parameter<double> m_cfg_bz{this, "bz", 4.7, "Magnetic field in Z (Tesla); override with -pKalmanFittingFactory:bz=VALUE"};
+        // EPC truth XYZ bends counterclockwise for the existing positive-charge
+        // seed convention: q*Bz < 0. The field magnitude remains 4.7 T.
+        Parameter<double> m_cfg_bz{this, "bz", -4.7, "Signed Bz [T]; -4.7 matches EPC bending with positive-charge seeds"};
+        Parameter<int> m_cfg_diagnosticEvent{this, "diagnostic_event", -1,
+            "Log per-layer innovations and KF states: event ID, -2 for all events, -1 disables"};
+        Parameter<double> m_cfg_chi2Cut{this, "chi2_cut", 0.,
+            "Maximum 2D pre-update innovation chi2; 0 disables the cut"};
         Parameter<std::string> m_acts_level{this, "acts_level", "INFO", "ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)"};
 
 
@@ -69,7 +75,7 @@ namespace tdis::tracking {
         void fillMeasurements(tdis::TrackSeed trackSeed,
                               std::shared_ptr<ActsExamples::MeasurementContainer>& actsMeasurements,
                               std::vector<Acts::SourceLink>& sourceLinks);
-        void processTrack(tdis::TrackSeed trackSeed);
+        void processTrack(tdis::TrackSeed trackSeed, int32_t runNumber, uint64_t eventNumber);
         void Execute(int32_t run_number, uint64_t event_number);
 
     private:

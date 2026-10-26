@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Mount the directory containing this launcher at /worksim.
+workspace_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+
+exec podman run --rm -it \
+    -v "${workspace_dir}:/worksim" \
+    -w /worksim \
+    eicdev/tdis-pre:latest \
+    bash -c 'export PATH="/worksim/tdis/build/install/bin:$PATH"; exec bash -i'

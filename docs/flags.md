@@ -2,6 +2,9 @@
 
 `tdis` software parameters (i.e. command line flags) that can be set when running TDIS applications.
 
+These configure a run; they do not define the saved [data schema](schema.md).
+See [architecture](architecture.md) for which services and algorithms are active.
+
 Parameters in JANA2 applications should be provided using `-p` flag. E.g. if parameter is `acts:log_level` then to set
 the parameter from command line one uses 
 
@@ -19,6 +22,12 @@ Main TDIS application flags.
 ## ACTS Flags
 
 ACTS (A Common Tracking Software) geometry and conversion flags.
+
+The TGeo options and older generator-prefixed entries below include historical
+settings. The current executable builds cylinders in code and does not read
+`g4sbs_mtpc.root`; use the active component controls described in
+[architecture](architecture.md) and the seed-study section below. The performance
+runner reports unused parameters as errors.
 
 - `acts:geometry` - *g4sbs_mtpc.root* - TGeo filename with geometry for ACTS
 - `acts:log_level` - *info* - log_level for acts: trace, debug, info, warn, error, critical, off
@@ -48,7 +57,9 @@ ACTS (A Common Tracking Software) geometry and conversion flags.
 ### Kalman Fitter Flags
 
 - `KalmanFittingFactory:acts_level` - *INFO* - ACTS log level (VERBOSE|DEBUG|INFO|WARNING|ERROR|FATAL)
-- `KalmanFittingFactory:bz` - *4.7* - Signed magnetic field along Z, in Tesla. Example: `tdis -pKalmanFittingFactory:bz=4.7 input.txt`. The effective field is printed at startup.
+- `KalmanFittingFactory:bz` - *-4.7* - Signed magnetic field along Z, in Tesla. The magnitude is 4.7 T; negative Bz matches EPC bending with positive-charge seeds. Override with `tdis -pKalmanFittingFactory:bz=VALUE input.txt`. The effective field is printed at startup.
+- `KalmanFittingFactory:chi2_cut` - *0* - Maximum pre-update 2D innovation χ². Zero disables finite-χ² rejection; a positive limit rejects the selected cylinder candidate before the update. Invalid innovations are always rejected. `25` is a tested opt-in setting, not a calibrated probability cut.
+- `KalmanFittingFactory:diagnostic_event` - *-1* - Event ID for layer innovation/covariance traces and versioned `KF_POINT` predicted/filtered/smoothed XYZ and parameter records; `-2` traces all events, `-1` disables traces.
 - `KalmanFitterGenerator:InputTags` - *TruthTrackSeeds* - Input collection names
 - `KalmanFitterGenerator:loglevel` - *info* - Component log level
 - `KalmanFitterGenerator:OutputTags` - *FittedTrajectories,FittedTrackParameters,FittedTracks* - Output collection names
@@ -67,7 +78,10 @@ S = predicted local covariance + measurement covariance
 ```
 
 The smallest finite χ² wins; exact ties keep input order. This is a greedy
-single-track choice, without branching or an additional χ² rejection threshold.
+single-track choice, without branching. The optional `chi2_cut` rejects the best
+candidate if its innovation χ² exceeds the limit; the prediction then continues
+without that measurement update. Rejected choices retain their original
+measurement relation and pre-update χ² in the trajectory outlier outputs.
 The Rφ residual is periodic. The chosen measurement ID is retained in fitted
 track relations and reused during backward filtering. Unchosen candidates remain
 in `Measurements2D`; they are not classified as fitted outliers.
@@ -80,20 +94,60 @@ the innermost candidate cylinder, with covariance transport, before tracking.
 This assumes the current near-axis, outward-going seed model; it is not a
 multi-turn track finder.
 
+After smoothing, the fitted inner-cylinder state is extrapolated backward to
+closest approach to the z-axis through the origin. This uses the same configured
+field and transports covariance without geometry navigation or material effects,
+with a 10 m path limit. `FittedTracks.type=0` indicates perigee success; `type=1`
+indicates extrapolation failure and cylinder fallback. The cylinder bound state
+is retained in either case; successful output also stores the perigee first.
+See [CSV/reference-state conventions](csv.md#fitted_trackscsv).
+
+If ACTS returns accepted filter states without reference parameters after a
+last-layer rejection, TDIS explicitly smooths the chain and uses the first
+accepted cylinder. Recovery requires every requested cylinder to have been
+visited; incomplete navigation remains a fit failure. See the
+[hit-level study](kf-hit-diagnostics-study.md) for evidence and remaining issues.
+
 The candidate-selection regression test can be run after building with
 `ctest --test-dir build -R layer_candidates --output-on-failure`.
+Perigee transport and Cartesian covariance tests run with
+`ctest --test-dir build -R fitted_output --output-on-failure`.
+
+### Hit resolution
+
+- `TruthTracksSeedsHitsFactory:acts:hit:cov:z`: default 0.25 mm², the local cylinder z variance. With drift velocity 5 cm / 1000 ns = 0.05 mm/ns and timing standard deviation 10 ns, σz = vdrift × σt = 0.5 mm. The same variance is stored in TrackerHit local covariance and Measurement2D. Override this variance directly for other resolutions.
+
+The 10 ns resolution is interpreted as one standard deviation, rather than a
+time-bin width. This models the timing contribution alone; diffusion, drift-speed
+calibration, time-zero uncertainty and charge-sharing correlations are separate
+effects. This covariance setting does not change the input z positions.
+TrackerHit timeError is 10 ns and Measurement2D time variance is 100 ns².
+The KF uses only the two spatial coordinates; drift time is not added as an
+independent third measurement of z.
+
+### Active seed-study controls
+
+The active component prefix is `TruthTracksSeedsHitsFactory`:
+
+- `acts:track_init:random_seed`: 0 uses random_device; a positive integer gives a fixed sequence (the performance runner uses 42 and one thread).
+- `acts:track_init:momentum_smear`: fractional momentum uncertainty, default 0.1; 0 disables smearing.
+- `acts:seed:cov:qoverp`: default -1 derives variance as `(momentum_smear × q/p_seed)²`; a nonnegative value overrides it in (e/GeV)².
+- `KalmanFittingFactory:diagnostic_event`: default -1 disables the per-layer trace; a nonnegative event ID enables innovation χ² and KF-state logging for that event.
+
+The original generator flag list below is retained for reference; use the active
+component prefix above for current commands.
 
 ### Truth Track Parameter Generator Flags
 
 - `TruthTrackParameterGenerator:acts:seed:cov:loc0` - *1* - [mm^2] Variance for local position 0 (impact parameter)
 - `TruthTrackParameterGenerator:acts:seed:cov:loc1` - *1* - [mm^2] Variance for local position 1 (z position at perigee)
 - `TruthTrackParameterGenerator:acts:seed:cov:phi` - *0.050000000000000003* - [rad^2] Variance for phi angle
-- `TruthTrackParameterGenerator:acts:seed:cov:qoverp` - *0.10000000000000001* - [(e/GeV)^2] Variance for charge over momentum
+- `TruthTracksSeedsHitsFactory:acts:seed:cov:qoverp` - *-1* - Derived fractional-smear model; nonnegative values set an absolute variance [(e/GeV)^2]
 - `TruthTrackParameterGenerator:acts:seed:cov:theta` - *0.01* - [rad^2] Variance for theta angle
 - `TruthTrackParameterGenerator:acts:seed:cov:time` - *10000000000* - [ns^2] Variance for time
 - `TruthTrackParameterGenerator:acts:seed:max_hits` - *3* - Maximum number of hits to include in a seed (typically 3-5 for initial seeding)
 - `TruthTrackParameterGenerator:acts:seed:min_hits` - *3* - Minimum number of hits to create a seed
-- `TruthTrackParameterGenerator:acts:track_init:momentum_smear` - *0.10000000000000001* - [GeV], Momentum smear for truth track initialization
+- `TruthTracksSeedsHitsFactory:acts:track_init:momentum_smear` - *0.1* - Dimensionless fractional momentum smearing
 - `TruthTrackParameterGenerator:acts:use_true_hit_position` - *1* - Use true hits xyz instead of digitized one
 - `TruthTrackParameterGenerator:InputTags` - *DigitizedMtpcMcTracks* - Input collection names
 - `TruthTrackParameterGenerator:loglevel` - *info* - Component log level

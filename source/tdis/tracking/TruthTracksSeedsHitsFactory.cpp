@@ -43,14 +43,26 @@ void TruthTracksSeedsHitsFactory::Configure() {
         throw std::invalid_argument("acts:hit:cov:z must be finite and positive [mm^2]");
     }
 
-    std::random_device rd;
-    m_generator = std::mt19937(rd());
+    if (m_cfg_randomSeed() < 0 || !std::isfinite(m_cfg_momentumSmear()) || m_cfg_momentumSmear() < 0) {
+        throw std::invalid_argument("random_seed and momentum_smear must be nonnegative and finite");
+    }
+    if (!std::isfinite(m_cfg_covQOverP()) ||
+        (m_cfg_covQOverP() < 0 && m_cfg_covQOverP() != -1.0)) {
+        throw std::invalid_argument("qoverp variance must be nonnegative, or -1 for smear-derived variance");
+    }
+    const auto seed = m_cfg_randomSeed() == 0 ? std::random_device{}()
+                                            : static_cast<unsigned>(m_cfg_randomSeed());
+    m_generator = std::mt19937(seed);
+    m_log->info("Seed momentum smear = {}; RNG seed = {}", m_cfg_momentumSmear(), seed);
 }
 
 // ---------------------------------------------------------------------------
 // generateNormal
 // ---------------------------------------------------------------------------
 double TruthTracksSeedsHitsFactory::generateNormal(double mean, double stddev) {
+    if (stddev == 0) {
+        return mean;
+    }
     std::normal_distribution<double> dist(mean, stddev);
     return dist(m_generator);
 }
@@ -110,7 +122,8 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     // -----------------------------------------------------------------------
     // Local cylinder covariance: u = R*phi, v = z, in mm².
     // Position remains global XYZ. Assume independent u/v errors and uniform
-    // charge within the pad's azimuthal width. The z variance is a placeholder.
+    // charge within the pad's azimuthal width. For z, sigma_z = v_drift*sigma_t;
+    // 5 cm/1000 ns and a 10 ns standard deviation give sigma_z = 0.5 mm.
     // The third slot is unused for this 2D measurement, not a radial constraint.
     // -----------------------------------------------------------------------
     const double padWidth = getPadApproxWidth(ring);
@@ -134,7 +147,8 @@ TruthTracksSeedsHitsFactory::createHitAndMeasurement(
     hit.setPositionError(cov);
     hit.setCellID(cell_id);
     hit.setTime(static_cast<float>(mcHit.getTime()));  // EDM time is in ns.
-    hit.setTimeError(static_cast<float>(ActsUnits::ms / ActsUnits::ns));
+    constexpr double timeSigma = 10.0 * ActsUnits::ns;
+    hit.setTimeError(static_cast<float>(timeSigma / ActsUnits::ns));
     hit.setEdep(mcHit.getAdc());
     hit.setEdepError(0.0F);
     hit.setRawHit(mcHit);
@@ -209,6 +223,9 @@ tdis::TrackSeed TruthTracksSeedsHitsFactory::createTrackSeedWithParameters(
     // Previously it was incorrectly multiplied by ActsUnits::GeV (= 1000 in MeV
     // natural units), inflating the smear width by three orders of magnitude.
     const double smearedMomentum = momentum * generateNormal(1.0, m_cfg_momentumSmear());
+    if (!std::isfinite(smearedMomentum) || smearedMomentum <= 0) {
+        throw std::invalid_argument("Seed momentum must be finite and positive");
+    }
 
     // -----------------------------------------------------------------------
     // Vertex position
@@ -286,7 +303,13 @@ tdis::TrackSeed TruthTracksSeedsHitsFactory::createTrackSeedWithParameters(
     cov(1, 1) = m_cfg_covLoc1()   * ActsUnits::mm * ActsUnits::mm;          // loc1  [mm²]
     cov(2, 2) = m_cfg_covPhi();                                              // phi   [rad²]
     cov(3, 3) = m_cfg_covTheta();                                            // theta [rad²]
-    cov(4, 4) = m_cfg_covQOverP() / (ActsUnits::GeV * ActsUnits::GeV);      // q/p   [(e/GeV)²]
+    // For q/p = q/p_seed, first-order propagation gives sigma(q/p) = f*abs(q/p).
+    // A fixed absolute variance incorrectly treats high-p seeds as much less
+    // informative than their actual fractional momentum uncertainty.
+    const double qOverPSigma = m_cfg_momentumSmear() * charge / smearedMomentum;
+    cov(4, 4) = m_cfg_covQOverP() == -1.0
+        ? qOverPSigma * qOverPSigma
+        : m_cfg_covQOverP() / (ActsUnits::GeV * ActsUnits::GeV);
     cov(5, 5) = m_cfg_covTime();                                           // time [ns²]
     track_param.setCovariance(cov);
 

@@ -1,6 +1,8 @@
 /build*
 /.vscode
 /log/summary.md
+# Local reconstruction output, study artifacts and reversible cleanup records.
+/tmp/
 /cpm_modules
 .DS_Store
 .idea/

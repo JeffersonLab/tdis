@@ -13,6 +13,7 @@
 #include "Acts/TrackFitting/GainMatrixUpdater.hpp"
 #include "RefittingCalibrator.h"
 #include "LayerCandidateCalibrator.h"
+#include "FittedTrackOutput.h"
 
 #include <set>
 #include "geometry/TdisGeometryHelper.hpp"
@@ -46,6 +47,9 @@ void KalmanFittingFactory::Configure() {
     if (!std::isfinite(m_cfg_bz())) {
         throw std::invalid_argument("KalmanFittingFactory:bz must be finite [T]");
     }
+    if (!std::isfinite(m_cfg_chi2Cut()) || m_cfg_chi2Cut() < 0) {
+        throw std::invalid_argument("KalmanFittingFactory:chi2_cut must be finite and nonnegative");
+    }
     // Setup magnetic field
     auto magneticField = std::make_shared<Acts::ConstantBField>(
         Acts::Vector3(0, 0, m_cfg_bz() * Acts::UnitConstants::T));
@@ -62,6 +66,7 @@ void KalmanFittingFactory::Configure() {
     // Logging
     m_log = m_log_svc->logger("KalmanFittingFactory");
     m_log->info("Using Bz = {} T", m_cfg_bz());
+    m_log->info("Pre-update innovation chi2 cut = {} (0 disables)", m_cfg_chi2Cut());
 
     // Acts logging
     auto actsLvlStr = m_acts_level();
@@ -135,7 +140,7 @@ void KalmanFittingFactory::fillMeasurements(
 }
 
 
-void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
+void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed, int32_t runNumber, uint64_t eventNumber) {
 
     auto geoContext = m_acts_geo_svc->GetActsGeometryContext();
     Acts::MagneticFieldContext magContext;
@@ -317,6 +322,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         podioPerigee.z);
 
     LayerCandidateCalibrator calibrator(*actsMeasurements);
+    InnovationOutlierFinder outlierFinder(m_cfg_chi2Cut());
 
     Acts::GainMatrixUpdater        kfUpdater;
     Acts::GainMatrixSmoother       kfSmoother;
@@ -337,6 +343,7 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         &Acts::GainMatrixSmoother::operator()<Acts::VectorMultiTrajectory>>(&kfSmoother);
     extensions.reverseFilteringLogic.connect<
         &SimpleReverseFilteringLogic::doBackwardFiltering>(&reverseFilteringLogic);
+    extensions.outlierFinder.connect<&InnovationOutlierFinder::operator()>(&outlierFinder);
 
     // Export the fit at an accepted measurement surface. ACTS propagates the
     // perigee seed and its covariance to the cylinders before candidate selection.
@@ -414,7 +421,36 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     }
 
     auto& trackProxy = result.value();
+    // ACTS's vector track container defaults to a pion hypothesis. Preserve the
+    // hypothesis actually used for fitting and for the inward time transport.
+    trackProxy.setParticleHypothesis(initialParameters.particleHypothesis());
     auto  mcTrack    = trackSeed.getMcTrack();
+
+    // ACTS can return accepted filter states without a reference when geometry
+    // navigation ends before its finalization actor runs after a last-layer
+    // outlier. Recover only when all requested cylinders were visited: an
+    // incomplete navigation must remain a failure. Never substitute the seed.
+    if (!trackProxy.hasReferenceSurface() && trackProxy.nMeasurements() > 0 &&
+        calibrator.selectedCandidates().size() == sourceLinks.size()) {
+        auto smoothed = kfSmoother(geoContext, vTraj, trackProxy.tipIndex(), *m_acts_logger);
+        if (smoothed.ok()) {
+            for (auto state : trackProxy.trackStatesReversed()) {
+                if (state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag) &&
+                    !state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag) && state.hasSmoothed()) {
+                    trackProxy.parameters() = state.smoothed();
+                    trackProxy.covariance() = state.smoothedCovariance();
+                    trackProxy.setReferenceSurface(state.referenceSurface().getSharedPtr());
+                }
+            }
+            m_log->info("KF reference recovered from smoothed measurements: event={} seed={}",
+                        eventNumber, trackSeed.id().index);
+        }
+    }
+    if (!trackProxy.hasReferenceSurface()) {
+        m_log->warn("KF has no fitted reference: event={} seed={} visited_cylinders={} requested_cylinders={}",
+                    eventNumber, trackSeed.id().index,
+                    calibrator.selectedCandidates().size(), sourceLinks.size());
+    }
 
     // -------------------------------------------------------------------------
     // RC1: Guard against a valid result that still holds an invalid reference
@@ -483,18 +519,121 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
     m_log->debug("Successfully fitted track => track p {} in container",
                  trackProxy.absoluteMomentum());
 
-    const auto& params = trackProxy.parameters();
-    double qOverP  = params[Acts::eBoundQOverP];
-    double momentum = std::abs(1.0 / qOverP);
-    double theta    = params[Acts::eBoundTheta];
-    double phi      = params[Acts::eBoundPhi];
+    // The KF reference at the first cylinder includes the backward smoothing.
+    // Keep it even when the separate inward extrapolation cannot reach perigee.
+    const Acts::BoundTrackParameters cylinderParameters(
+        trackProxy.referenceSurface().getSharedPtr(), trackProxy.parameters(),
+        trackProxy.covariance(), trackProxy.particleHypothesis());
+    if (!cylinderParameters.parameters().allFinite() ||
+        !cylinderParameters.covariance()->allFinite()) {
+        m_log->error("Non-finite fitted state/covariance for seed {}", trackSeed.id().index);
+        return;
+    }
+    auto outputParameters = cylinderParameters;
+    auto perigeeResult = extrapolateToPerigee(
+        cylinderParameters, seedPropagator, geoContext, magContext);
+    const bool perigeeReached = perigeeResult.ok();
+    if (perigeeReached) {
+        outputParameters = std::move(perigeeResult.value());
+        m_log->info("Track seed {}: fitted perigee extrapolation succeeded", trackSeed.id().index);
+    } else {
+        m_log->warn("Track seed {}: perigee extrapolation failed ({}); retaining cylinder output",
+                    trackSeed.id().index, perigeeResult.error().message());
+    }
 
-    m_log->debug("qOverP   = {}", qOverP);
-    m_log->debug("momentum = {}", momentum);
-    m_log->debug("theta    = {}", theta);
-    m_log->debug("phi      = {}", phi);
+    // Optional portable state points for the event display. Smooth a copy:
+    // hasSmoothed() only proves storage exists, and diagnostics must not change
+    // the fitted result. An explicit successful smoothing initializes the copy.
+    if (m_cfg_diagnosticEvent() == -2 || (m_cfg_diagnosticEvent() >= 0 &&
+        eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()))) {
+        auto diagnosticStates = vTraj;
+        bool validStates = true;
+        diagnosticStates.visitBackwards(trackProxy.tipIndex(), [&](const auto& state) {
+            validStates = validStates && state.hasPredicted() && state.hasFiltered() &&
+                state.predicted().allFinite() && state.filtered().allFinite() &&
+                state.predictedCovariance().allFinite() && state.filteredCovariance().allFinite();
+        });
+        const bool smoothed = validStates &&
+            kfSmoother(geoContext, diagnosticStates, trackProxy.tipIndex(), *m_acts_logger).ok();
+        diagnosticStates.visitBackwards(trackProxy.tipIndex(), [&](const auto& state) {
+            int measurementId = -1;
+            if (state.hasUncalibratedSourceLink()) {
+                const auto index = state.getUncalibratedSourceLink()
+                    .template get<ActsExamples::IndexSourceLink>().index();
+                if (index < trackSeed.getMeasurements().size()) {
+                    measurementId = trackSeed.getMeasurements()[index].getObjectID().index;
+                }
+            }
+            for (const std::string stage : {"predicted", "filtered", "smoothed"}) {
+                if ((stage == "predicted" && !state.hasPredicted()) ||
+                    (stage == "filtered" && !state.hasFiltered()) ||
+                    (stage == "smoothed" && (!smoothed || !state.hasSmoothed()))) {
+                    continue;
+                }
+                const Acts::BoundVector parameters = stage == "predicted" ? state.predicted() :
+                    stage == "filtered" ? state.filtered() : state.smoothed();
+                if (!parameters.allFinite() || parameters[Acts::eBoundQOverP] == 0 ||
+                    parameters[Acts::eBoundTheta] <= 0 || parameters[Acts::eBoundTheta] >= M_PI) {
+                    continue;
+                }
+                const Acts::BoundTrackParameters bound(state.referenceSurface().getSharedPtr(),
+                    parameters, std::nullopt, trackProxy.particleHypothesis());
+                const Acts::Vector3 position = bound.position(geoContext) / Acts::UnitConstants::mm;
+                const Acts::Vector3 momentum = bound.momentum() / Acts::UnitConstants::GeV;
+                m_log->info("KF_POINT version=1 run={} event={} seed={} state={} surface={} "
+                    "meas_id={} measurement={} outlier={} hole={} stage={} path_mm={:.17g} "
+                    "x={:.17g} y={:.17g} z={:.17g} px={:.17g} py={:.17g} pz={:.17g} "
+                    "loc0={:.17g} loc1={:.17g} phi={:.17g} theta={:.17g} qop={:.17g} time_ns={:.17g}",
+                    runNumber, eventNumber, trackSeed.id().index, state.index(),
+                    state.referenceSurface().geometryId().value(), measurementId,
+                    int(state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag)),
+                    int(state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag)),
+                    int(state.typeFlags().test(Acts::TrackStateFlag::HoleFlag)), stage,
+                    state.pathLength() / Acts::UnitConstants::mm,
+                    position.x(), position.y(), position.z(), momentum.x(), momentum.y(), momentum.z(),
+                    parameters[Acts::eBoundLoc0] / Acts::UnitConstants::mm,
+                    parameters[Acts::eBoundLoc1] / Acts::UnitConstants::mm,
+                    parameters[Acts::eBoundPhi], parameters[Acts::eBoundTheta],
+                    parameters[Acts::eBoundQOverP] * Acts::UnitConstants::GeV,
+                    parameters[Acts::eBoundTime] / Acts::UnitConstants::ns);
+            }
+        });
+    }
 
     for (auto state : trackProxy.trackStatesReversed()) {
+        if ((m_cfg_diagnosticEvent() == -2 || (m_cfg_diagnosticEvent() >= 0 &&
+            eventNumber == static_cast<uint64_t>(m_cfg_diagnosticEvent()))) &&
+            state.hasCalibrated() && state.calibratedSize() == 2 && state.hasPredicted()) {
+            const Acts::Vector2 residual = state.calibrated<2>() - state.predicted().head<2>();
+            const Acts::SquareMatrix2 innovation = state.predictedCovariance().topLeftCorner<2, 2>() +
+                                                   state.calibratedCovariance<2>();
+            const double chi2 = residual.dot(innovation.ldlt().solve(residual));
+            const auto index = state.getUncalibratedSourceLink().get<ActsExamples::IndexSourceLink>().index();
+            const auto raw = trackSeed.getMeasurements()[index].getHits()[0].getRawHit();
+            Acts::Vector2 smoothedResidual = Acts::Vector2::Constant(NAN);
+            if (state.hasSmoothed()) {
+                smoothedResidual = state.calibrated<2>() - state.smoothed().head<2>();
+            }
+            m_log->info("KF_STATE event={} seed={} state={} ring={} pad={} plane={} candidate={} "
+                        "measurement={} outlier={} hole={} residual_u={} residual_z={} "
+                        "innovation_chi2={} state_chi2={} qop_pred={} qop_filtered={} qop_smoothed={} "
+                        "meas_id={} candidates={} predicted_u={} predicted_z={} "
+                        "pred_cov_uu={} pred_cov_uz={} pred_cov_zz={} "
+                        "smoothed_residual_u={} smoothed_residual_z={}",
+                        eventNumber, trackSeed.id().index, state.index(), raw.getRing(), raw.getPad(),
+                        raw.getPlane(), index,
+                        state.typeFlags().test(Acts::TrackStateFlag::MeasurementFlag),
+                        state.typeFlags().test(Acts::TrackStateFlag::OutlierFlag),
+                        state.typeFlags().test(Acts::TrackStateFlag::HoleFlag), residual[0], residual[1],
+                        chi2, state.chi2(), state.predicted()[Acts::eBoundQOverP],
+                        state.hasFiltered() ? state.filtered()[Acts::eBoundQOverP] : NAN,
+                        state.hasSmoothed() ? state.smoothed()[Acts::eBoundQOverP] : NAN,
+                        trackSeed.getMeasurements()[index].getObjectID().index,
+                        calibrator.candidateCount(state.referenceSurface().geometryId()),
+                        state.predicted()[Acts::eBoundLoc0], state.predicted()[Acts::eBoundLoc1],
+                        state.predictedCovariance()(0, 0), state.predictedCovariance()(0, 1),
+                        state.predictedCovariance()(1, 1), smoothedResidual[0], smoothedResidual[1]);
+        }
         if (state.hasSmoothed()) {
             m_log->debug(
                 "Smoothed params at {}: loc0={}, loc1={}, phi={}, theta={}, qOverP={}, momentum={}",
@@ -534,204 +673,90 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
         trajectory.addToOutlierChi2(outlierChi2);
     }
 
-    const auto& boundParams = trackProxy.parameters();
-    const auto& boundCov    = trackProxy.covariance();
+    // Primary output first; cylinder state also retained after a successful extrapolation.
+    auto writeParameters = [&](const Acts::BoundTrackParameters& fitted, int type) {
+        const auto& boundParams = fitted.parameters();
+        const auto& boundCov = *fitted.covariance();
+        auto trackParams = m_out_track_params()->create();
+        trackParams.setType(type);
+        trackParams.setSurface(fitted.referenceSurface().geometryId().value());
+        trackParams.setLoc({
+            static_cast<float>(boundParams[Acts::eBoundLoc0] / Acts::UnitConstants::mm),
+            static_cast<float>(boundParams[Acts::eBoundLoc1] / Acts::UnitConstants::mm)});
+        trackParams.setTheta(static_cast<float>(fitted.theta()));
+        trackParams.setPhi(static_cast<float>(fitted.phi()));
+        trackParams.setQOverP(static_cast<float>(fitted.qOverP() * Acts::UnitConstants::GeV));
+        trackParams.setTime(static_cast<float>(fitted.time() / Acts::UnitConstants::ns));
+        trackParams.setPdg(static_cast<int32_t>(fitted.particleHypothesis().absolutePdg()));
 
-    auto trackParams = m_out_track_params()->create();
-    trackParams.setType(0);
-    if (trackProxy.hasReferenceSurface()) {
-        trackParams.setSurface(trackProxy.referenceSurface().geometryId().value());
-    }
+        // =========================================================================
+        // Full 6x6 output covariance with unit conversion (ACTS internal → EDM)
+        //
+        // ACTS internal units:  length in mm, angles in rad, q/p in 1/GeV, time in c*t
+        // EDM units:            mm, rad, 1/GeV, ns; scale factors applied per-element
+        //
+        // Conversion factors per parameter:
+        //   loc0, loc1  : divide by mm  (UnitConstants::mm)
+        //   phi, theta  : dimensionless (factor = 1)
+        //   q/p         : divide by 1/GeV  (= multiply by GeV)
+        //   time        : divide by ns  (UnitConstants::ns)
+        //
+        // The (i,j) element of the EDM covariance is:
+        //   edmCov(i,j) = actsCov(i,j) / unit_i / unit_j
+        // =========================================================================
+        static constexpr std::array<std::pair<Acts::BoundIndices, double>, 6> edm_indexed_units{{
+            {Acts::eBoundLoc0,   Acts::UnitConstants::mm},
+            {Acts::eBoundLoc1,   Acts::UnitConstants::mm},
+            {Acts::eBoundPhi,    1.},
+            {Acts::eBoundTheta,  1.},
+            {Acts::eBoundQOverP, 1. / Acts::UnitConstants::GeV},
+            {Acts::eBoundTime,   Acts::UnitConstants::ns}
+        }};
 
-    trackParams.setLoc({
-        static_cast<float>(boundParams[Acts::eBoundLoc0]),
-        static_cast<float>(boundParams[Acts::eBoundLoc1])
-    });
-    trackParams.setTheta(static_cast<float>(boundParams[Acts::eBoundTheta]));
-    trackParams.setPhi(static_cast<float>(boundParams[Acts::eBoundPhi]));
-    trackParams.setQOverP(static_cast<float>(boundParams[Acts::eBoundQOverP]));
-    trackParams.setTime(static_cast<float>(boundParams[Acts::eBoundTime] / Acts::UnitConstants::ns));
-    trackParams.setPdg(static_cast<int32_t>(trackProxy.particleHypothesis().absolutePdg()));
-
-    // =========================================================================
-    // Full 6x6 output covariance with unit conversion (ACTS internal → EDM)
-    //
-    // ACTS internal units:  length in mm, angles in rad, q/p in 1/GeV, time in c*t
-    // EDM units:            mm, rad, 1/GeV, ns; scale factors applied per-element
-    //
-    // Conversion factors per parameter:
-    //   loc0, loc1  : divide by mm  (UnitConstants::mm)
-    //   phi, theta  : dimensionless (factor = 1)
-    //   q/p         : divide by 1/GeV  (= multiply by GeV)
-    //   time        : divide by ns  (UnitConstants::ns)
-    //
-    // The (i,j) element of the EDM covariance is:
-    //   edmCov(i,j) = actsCov(i,j) / unit_i / unit_j
-    // =========================================================================
-    static constexpr std::array<std::pair<Acts::BoundIndices, double>, 6> edm_indexed_units{{
-        {Acts::eBoundLoc0,   Acts::UnitConstants::mm},
-        {Acts::eBoundLoc1,   Acts::UnitConstants::mm},
-        {Acts::eBoundPhi,    1.},
-        {Acts::eBoundTheta,  1.},
-        {Acts::eBoundQOverP, 1. / Acts::UnitConstants::GeV},
-        {Acts::eBoundTime,   Acts::UnitConstants::ns}
-    }};
-
-    tdis::Cov6f cov;
-    for (std::size_t i = 0; const auto& [a, x] : edm_indexed_units) {
-        for (std::size_t j = 0; const auto& [b, y] : edm_indexed_units) {
-            cov(i, j) = boundCov(a, b) / x / y;
-            ++j;
+        tdis::Cov6f cov;
+        for (std::size_t i = 0; const auto& [a, x] : edm_indexed_units) {
+            for (std::size_t j = 0; const auto& [b, y] : edm_indexed_units) {
+                cov(i, j) = boundCov(a, b) / x / y;
+                ++j;
+            }
+            ++i;
         }
-        ++i;
+        trackParams.setCovariance(cov);
+        trajectory.addToTrackParameters(trackParams);
+    };
+    writeParameters(outputParameters, perigeeReached ? 0 : 1);
+    if (perigeeReached) {
+        writeParameters(cylinderParameters, 1);
     }
-    trackParams.setCovariance(cov);
-    trajectory.addToTrackParameters(trackParams);
 
     auto track = m_out_tracks()->create();
-    track.setType(trackParams.getType());
+    // 0 = fitted beamline perigee; 1 = cylinder fallback after extrapolation failure.
+    track.setType(perigeeReached ? 0 : 1);
+    const auto& boundParams = outputParameters.parameters();
+    const auto& boundCov = *outputParameters.covariance();
+    const Acts::Vector3 position = outputParameters.position(geoContext) / Acts::UnitConstants::mm;
+    const Acts::Vector3 momentum = outputParameters.momentum() / Acts::UnitConstants::GeV;
+    track.setPosition({static_cast<float>(position.x()), static_cast<float>(position.y()),
+                       static_cast<float>(position.z())});
+    track.setMomentum({static_cast<float>(momentum.x()), static_cast<float>(momentum.y()),
+                       static_cast<float>(momentum.z())});
 
-    // FIX: momentum units corrected.
-    // 1/qOverP is in ACTS internal units (GeV for momentum in natural units).
-    // Divide by UnitConstants::GeV to express as a plain GeV double for EDM storage.
-    qOverP   = boundParams[Acts::eBoundQOverP];
-    momentum = std::abs(1.0 / qOverP) / Acts::UnitConstants::GeV;  // → GeV
-    theta    = boundParams[Acts::eBoundTheta];
-    phi      = boundParams[Acts::eBoundPhi];
-
-    double px = momentum * std::sin(theta) * std::cos(phi);
-    double py = momentum * std::sin(theta) * std::sin(phi);
-    double pz = momentum * std::cos(theta);
-
-    track.setMomentum({
-        static_cast<float>(px),
-        static_cast<float>(py),
-        static_cast<float>(pz)
-    });
-
-    // FIX: removed unused podioOutPerigee variable; use podioPerigee already in scope
-    track.setPosition({
-        static_cast<float>(podioPerigee.x),
-        static_cast<float>(podioPerigee.y),
-        static_cast<float>(podioPerigee.z)
-    });
-
-    // =========================================================================
-    // Bound → Cartesian covariance transform
-    //
-    // Bound state vector:    b = (loc0, loc1, phi, theta, q/p, time)
-    // Cartesian state vector: c = (x, y, z, px, py, pz)
-    //
-    // The position block (x,y,z) on the reference surface maps as:
-    //   x ≈ loc0   y ≈ loc1   z = fixed on surface  →  ∂x/∂loc0=1, ∂y/∂loc1=1
-    //   (all other ∂pos/∂bound = 0 for a planar perigee surface)
-    //
-    // The momentum block uses p = |p| = 1/|q/p| (in GeV after unit division):
-    //   px = p · sin(θ)·cos(φ)
-    //   py = p · sin(θ)·sin(φ)
-    //   pz = p · cos(θ)
-    //
-    // Partial derivatives of (px,py,pz) w.r.t. (phi, theta, q/p):
-    //   ∂px/∂φ     =  -p·sin(θ)·sin(φ)  = -py
-    //   ∂px/∂θ     =   p·cos(θ)·cos(φ)  =  pz·cos(φ)/sin(θ)... simplified: p·cos(θ)·cos(φ)
-    //   ∂px/∂(q/p) =  -px / (q/p)       = -px · p²  (sign: ∂p/∂(q/p) = -1/(q/p)²)
-    //
-    //   ∂py/∂φ     =   p·sin(θ)·cos(φ)  = +px
-    //   ∂py/∂θ     =   p·cos(θ)·sin(φ)
-    //   ∂py/∂(q/p) =  -py · p²
-    //
-    //   ∂pz/∂φ     =   0
-    //   ∂pz/∂θ     =  -p·sin(θ)
-    //   ∂pz/∂(q/p) =  -pz · p²
-    //
-    // The full Jacobian J is 6×6 (Cartesian rows, bound columns):
-    //
-    //         loc0  loc1  phi              theta              q/p              time
-    //   x  [  1     0     0                0                  0                0   ]
-    //   y  [  0     1     0                0                  0                0   ]
-    //   z  [  0     0     0                0                  0                0   ]
-    //   px [  0     0     dpx_dphi         dpx_dtheta         dpx_dqop         0   ]
-    //   py [  0     0     dpy_dphi         dpy_dtheta         dpy_dqop         0   ]
-    //   pz [  0     0     0                dpz_dtheta         dpz_dqop         0   ]
-    //
-    // Cartesian covariance = J · boundCov · Jᵀ
-    // =========================================================================
-    {
-        // Kinematic quantities (momentum already in GeV from above)
-        const double sinPhi   = std::sin(phi);
-        const double cosPhi   = std::cos(phi);
-        const double sinTheta = std::sin(theta);
-        const double cosTheta = std::cos(theta);
-        // p in GeV (same as `momentum` computed above)
-        const double p        = momentum;                   // GeV
-        // ∂p/∂(q/p) = -1/(q/p)² = -p² (sign absorbed per derivative below)
-        const double p2       = p * p;
-
-        // Momentum partial derivatives
-        const double dpx_dphi   = -p * sinTheta * sinPhi;   // = -py
-        const double dpx_dtheta =  p * cosTheta * cosPhi;
-        const double dpx_dqop   = -px * p2;                 // px/GeV · p² → GeV²
-
-        const double dpy_dphi   =  p * sinTheta * cosPhi;   // = +px
-        const double dpy_dtheta =  p * cosTheta * sinPhi;
-        const double dpy_dqop   = -py * p2;
-
-        // dpz_dphi = 0
-        const double dpz_dtheta = -p * sinTheta;
-        const double dpz_dqop   = -pz * p2;
-
-        // Build 6x6 Jacobian  J[cart_row][bound_col]
-        // bound col order: 0=loc0, 1=loc1, 2=phi, 3=theta, 4=qop, 5=time
-        // cart  row order: 0=x,    1=y,    2=z,   3=px,    4=py,  5=pz
-        Eigen::Matrix<double, 6, 6> J = Eigen::Matrix<double, 6, 6>::Zero();
-
-        // Position rows — loc0→x, loc1→y, z has no free bound parameter here
-        J(0, Acts::eBoundLoc0)   = 1.0;   // ∂x/∂loc0
-        J(1, Acts::eBoundLoc1)   = 1.0;   // ∂y/∂loc1
-        // J(2, *) = 0  (z is fixed on the reference surface)
-
-        // px row
-        J(3, Acts::eBoundPhi)    = dpx_dphi;
-        J(3, Acts::eBoundTheta)  = dpx_dtheta;
-        J(3, Acts::eBoundQOverP) = dpx_dqop;
-
-        // py row
-        J(4, Acts::eBoundPhi)    = dpy_dphi;
-        J(4, Acts::eBoundTheta)  = dpy_dtheta;
-        J(4, Acts::eBoundQOverP) = dpy_dqop;
-
-        // pz row
-        // J(5, Acts::eBoundPhi)    = 0  (already zero)
-        J(5, Acts::eBoundTheta)  = dpz_dtheta;
-        J(5, Acts::eBoundQOverP) = dpz_dqop;
-
-        // Propagate: cartCov = J * boundCov * Jᵀ
-        // boundCov is Acts::BoundSquareMatrix (6x6, double)
-        const Eigen::Matrix<double, 6, 6> cartCov =
-            J * boundCov * J.transpose();
-
-        // Pack into EDM Cov6f (row-major 6x6 float)
-        // EDM order: (x, y, z, px, py, pz) — same as cartesian row order above
-        tdis::Cov6f pmCov;
-        for (int i = 0; i < 6; ++i) {
-            for (int j = 0; j < 6; ++j) {
-                pmCov(i, j) = static_cast<float>(cartCov(i, j));
-            }
+    // Preserve all correlations with the surface-specific position Jacobian.
+    // In particular, d(p_i)/d(q/p) = -p_i/(q/p), including the charge sign.
+    const auto jacobian = boundToCartesianJacobian(outputParameters, geoContext);
+    const Acts::ActsSquareMatrix<6> cartCov = jacobian * boundCov * jacobian.transpose();
+    tdis::Cov6f pmCov;
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < 6; ++j) {
+            pmCov(i, j) = static_cast<float>(cartCov(i, j));
         }
-
-        m_log->debug(
-            "positionMomentumCov diagonal — "
-            "x={:.3e}  y={:.3e}  z={:.3e}  px={:.3e}  py={:.3e}  pz={:.3e}",
-            cartCov(0,0), cartCov(1,1), cartCov(2,2),
-            cartCov(3,3), cartCov(4,4), cartCov(5,5));
-
-        track.setPositionMomentumCovariance(pmCov);
     }
+    track.setPositionMomentumCovariance(pmCov);
     track.setTime(static_cast<float>(boundParams[Acts::eBoundTime] / Acts::UnitConstants::ns));
     track.setTimeError(
         static_cast<float>(std::sqrt(boundCov(Acts::eBoundTime, Acts::eBoundTime)) /
                            Acts::UnitConstants::ns));
-    track.setCharge(std::copysign(1.0, qOverP));
+    track.setCharge(outputParameters.charge());
     track.setChi2(trajectorySummary.chi2Sum);
     track.setNdf(trajectorySummary.NDF);
     track.setPdg(trackProxy.particleHypothesis().absolutePdg());
@@ -762,9 +787,9 @@ void KalmanFittingFactory::processTrack(tdis::TrackSeed trackSeed) {
 
     m_log->debug(
         "Track successfully converted: p={:.3f} GeV, theta={:.3f} rad, phi={:.3f} rad, chi2/ndf={:.2f}",
-        momentum,
-        theta,
-        phi,
+        momentum.norm(),
+        outputParameters.theta(),
+        outputParameters.phi(),
         track.getChi2() / track.getNdf());
 }
 
@@ -773,7 +798,7 @@ void KalmanFittingFactory::Execute(int32_t run_number, uint64_t event_number) {
     using namespace Acts::UnitLiterals;
 
     for (const auto& trackSeed : *m_in_trackSeeds()) {
-        processTrack(trackSeed);
+        processTrack(trackSeed, run_number, event_number);
     }
 }
 

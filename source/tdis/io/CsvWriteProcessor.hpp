@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <limits>
+
 #include <JANA/JEventProcessor.h>
 #include <JANA/JObject.h>
 #include <fmt/format.h>
@@ -141,14 +143,14 @@ private:
             "fit_p,"            // 10 - fitted momentum [GeV]
             "fit_theta,"        // 11 - fitted theta [rad]
             "fit_phi,"          // 12 - fitted phi [rad]
-            "fit_vtx_z,"        // 13 - fitted vertex z [mm]
+            "fit_pos_z,"        // 13 - fitted reference z [mm]
             "fit_chi2ndf,"      // 14 - chi2/ndf
-            "fit_type,"         // 15 - track type
+            "fit_type,"         // 15 - 0 perigee reached, 1 cylinder fallback
             "fit_px,"           // 16 - fitted momentum x [GeV]
             "fit_py,"           // 17 - fitted momentum y [GeV]
             "fit_pz,"           // 18 - fitted momentum z [GeV]
-            "fit_vtx_x,"        // 19 - fitted vertex x [mm]
-            "fit_vtx_y,"        // 20 - fitted vertex y [mm]
+            "fit_pos_x,"        // 19 - fitted reference x [mm]
+            "fit_pos_y,"        // 20 - fitted reference y [mm]
             "fit_time,"         // 21 - fitted time [ns]
             "fit_time_err,"     // 22 - fitted time error
             "fit_charge,"       // 23 - fitted charge
@@ -158,7 +160,8 @@ private:
             "n_states,"         // 27 - number of track states
             "n_measurements,"   // 28 - number of measurements
             "n_outliers,"       // 29 - number of outliers
-            "n_holes"           // 30 - number of holes
+            "n_holes,"          // 30 - number of holes
+            "fit_surface"       // 31 - output geometry ID (0 for origin beamline perigee)
             "\n");
     }
 
@@ -178,7 +181,7 @@ private:
             "time,"             // 11 - time
             "path_length,"      // 12 - path length
             "chi2,"             // 13 - state chi2
-            "type"              // 14 - state type (measurement, outlier, hole)
+            "type"              // 14 - reference type (perigee, cylinder)
             "\n");
     }
 
@@ -434,7 +437,7 @@ public:
 
         double fit_chi2ndf = (track.getNdf() > 0) ? track.getChi2()/track.getNdf() : -1;
 
-        fmt::print(m_fittedTrackFile, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+        fmt::print(m_fittedTrackFile, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
             eventIndex,                         // 0 - evt
             track.getObjectID().index,          // 1 - track_id
             seedId,                             // 2 - seed_id
@@ -448,14 +451,14 @@ public:
             fit_p,                              // 10 - fit_p
             fit_theta,                          // 11 - fit_theta
             fit_phi,                            // 12 - fit_phi
-            position.z,                         // 13 - fit_vtx_z
+            position.z,                         // 13 - fit_pos_z
             fit_chi2ndf,                        // 14 - fit_chi2ndf
             track.getType(),                    // 15 - fit_type
             momentum.x,                         // 16 - fit_px
             momentum.y,                         // 17 - fit_py
             momentum.z,                         // 18 - fit_pz
-            position.x,                         // 19 - fit_vtx_x
-            position.y,                         // 20 - fit_vtx_y
+            position.x,                         // 19 - fit_pos_x
+            position.y,                         // 20 - fit_pos_y
             track.getTime(),                    // 21 - fit_time
             track.getTimeError(),               // 22 - fit_time_err
             track.getCharge(),                  // 23 - fit_charge
@@ -465,7 +468,9 @@ public:
             trajectory.isAvailable() ? trajectory.getNStates() : 0,           // 27 - n_states
             trajectory.isAvailable() ? trajectory.getNMeasurements() : 0,     // 28 - n_measurements
             trajectory.isAvailable() ? trajectory.getNOutliers() : 0,         // 29 - n_outliers
-            trajectory.isAvailable() ? trajectory.getNHoles() : 0             // 30 - n_holes
+            trajectory.isAvailable() ? trajectory.getNHoles() : 0,            // 30 - n_holes
+            trajectory.isAvailable() && !trajectory.getTrackParameters().empty()
+                ? trajectory.getTrackParameters()[0].getSurface() : 0          // 31 - fit_surface
         );
         fmt::print(m_fittedTrackFile, "\n");
     }
@@ -487,11 +492,8 @@ public:
             double qOverP = params.getQOverP();
             double p = (qOverP != 0) ? std::abs(1.0 / qOverP) : 0;
 
-            // Determine state type (simplified - you may need more logic here)
-            std::string stateType = "measurement";
-            if (stateIdx < trajectory.getOutlierChi2().size() && trajectory.getOutlierChi2()[stateIdx] > 0) {
-                stateType = "outlier";
-            }
+            // These are reference states, not the complete measurement-state history.
+            const std::string stateType = params.getType() == 0 ? "perigee" : "cylinder";
 
             fmt::print(m_trackStateFile, "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
                 eventIndex,                     // 0 - evt
@@ -506,8 +508,8 @@ public:
                 qOverP,                         // 9 - qoverp
                 p,                              // 10 - p
                 params.getTime(),               // 11 - time
-                0.0,                            // 12 - path_length (not stored, placeholder)
-                stateIdx < trajectory.getMeasurementChi2().size() ? trajectory.getMeasurementChi2()[stateIdx] : 0, // 13 - chi2
+                std::numeric_limits<double>::quiet_NaN(), // 12 - path_length unavailable
+                std::numeric_limits<double>::quiet_NaN(), // 13 - no measurement chi2 for reference states
                 stateType                       // 14 - type
             );
             fmt::print(m_trackStateFile, "\n");
