@@ -13,9 +13,7 @@ resolution, see the [tracking performance workflow](docs/tracking-performance.md
 
 A **schema** defines the saved objects, fields, units and relationships in a
 reconstruction file. **102 is the current TDIS data-model version**, declared
-in [source/tdis/edm.yaml](source/tdis/edm.yaml). It is not a ROOT software version,
-event count or reconstruction setting. PODIO stores this version for each
-collection in the ROOT file's `podio_metadata` tree.
+in [source/tdis/edm.yaml](source/tdis/edm.yaml). 
 
 Schema 102 distinguishes a fitted beamline perigee (`FittedTracks.type = 0`)
 from a cylinder fallback when inward extrapolation fails (`type = 1`).
@@ -25,14 +23,12 @@ to (0,0,0). Lengths are stored in mm, angles in radians and times in ns.
 Version 101 established the cylinder-local hit covariance convention; 102
 adds these reference/status conventions without changing the field layout.
 
-The tracking plotters require schema 102 so they can interpret these fields
-correctly. Renaming an older file does not convert its schema. For collection
-definitions, units and compatibility details, see [the schema reference](docs/schema.md).
+For collection definitions, units and compatibility details, see [the schema reference](docs/schema.md).
 Run settings such as Bz and the chi2 cut are separate and recorded in `run.json`.
 
 ## Plot a fitted event
 
-Inside the TDIS image, from `/worksim`:
+Inside the TDIS image:
 
 ```bash
 python3 tdis/python/plot_event_display.py PATH/TO/reco.tdisedm.root \
